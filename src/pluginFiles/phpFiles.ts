@@ -1,5 +1,6 @@
 import { adminCssContent } from './adminCss';
 import { adminJsContent } from './adminJs';
+import { PluginSettings } from '../types';
 
 export interface PluginFileEntry {
   path: string;
@@ -9,7 +10,18 @@ export interface PluginFileEntry {
   content: string;
 }
 
-export const pluginFiles: PluginFileEntry[] = [
+export function getPluginFiles(settings?: PluginSettings): PluginFileEntry[] {
+  const brandSource = settings?.brandSource || 'taxonomy';
+  const brandTaxonomy = settings?.brandTaxonomyName || 'product_brand';
+  const brandAttribute = settings?.brandAttributeName || 'pa_brands';
+  const snappayKey = settings?.snappayMetaKey || '_disable_snappay';
+  const snappayMode = settings?.snappayMode || 'disable_flag';
+  const torobKey = settings?.torobMetaKey || '_disable_torobpay';
+  const torobMode = settings?.torobMode || 'disable_flag';
+  const batchSize = settings?.batchSize || 20;
+  const retentionDays = settings?.historyRetentionDays || 60;
+
+  return [
   {
     path: 'wc-bulk-product-editor-pro.php',
     name: 'wc-bulk-product-editor-pro.php',
@@ -77,6 +89,7 @@ add_action('plugins_loaded', function () {
         'includes/class-batch-processor.php',
         'includes/class-rollback-manager.php',
         'includes/integrations/class-adapter-registry.php',
+        'includes/integrations/class-installment-gateways.php',
         'includes/admin/class-admin-menu.php',
         'includes/admin/class-admin-ajax.php',
     ];
@@ -419,13 +432,32 @@ class ChangeSetEngine {
             }
         }
 
-        // 7. Brand (برند pa_brands)
+        // 7. Brand (برند محصول بر اساس تاکسونومی یا ویژگی)
         $brandAction = $operations['brand_action'] ?? $operations['brandAction'] ?? 'none';
         $brandValue  = $operations['brand_value'] ?? $operations['brandValue'] ?? '';
         if (!empty($brandAction) && $brandAction !== 'none') {
-            $curBrand = (string) $product->get_meta('_product_brand', true);
-            if (empty($curBrand)) $curBrand = (string) $product->get_attribute('pa_brands');
-            if (empty($curBrand)) $curBrand = (string) $product->get_attribute('pa_brand');
+            $brandSource   = get_option('wc_bpe_brand_source', 'taxonomy');
+            $brandTaxonomy = get_option('wc_bpe_brand_taxonomy', 'product_brand');
+            $brandAttribute= get_option('wc_bpe_brand_attribute', 'pa_brands');
+
+            $curBrand = '';
+            if ($brandSource === 'taxonomy') {
+                $terms = wp_get_post_terms($product->get_id(), [$brandTaxonomy, 'product_brand']);
+                if (!is_wp_error($terms) && !empty($terms)) {
+                    $curBrand = $terms[0]->name;
+                }
+                if (empty($curBrand)) {
+                    $curBrand = (string) $product->get_meta('_product_brand', true);
+                }
+            } else {
+                $curBrand = (string) $product->get_attribute($brandAttribute);
+                if (empty($curBrand)) {
+                    $curBrand = (string) $product->get_attribute('pa_brand');
+                }
+            }
+            if (empty($curBrand)) {
+                $curBrand = (string) $product->get_meta('_product_brand', true);
+            }
 
             $targetBrand = ($brandAction === 'set_term') ? $brandValue : '';
             if ($curBrand !== $targetBrand) {
@@ -553,13 +585,21 @@ class BatchProcessor {
             // Apply Brand
             if (isset($diff['after']['brand'])) {
                 $bVal = ($diff['after']['brand'] === 'حذف برند') ? '' : $diff['after']['brand'];
+                $brandSource   = get_option('wc_bpe_brand_source', 'taxonomy');
+                $brandTaxonomy = get_option('wc_bpe_brand_taxonomy', 'product_brand');
+                $brandAttr     = get_option('wc_bpe_brand_attribute', 'pa_brands');
+
                 $product->update_meta_data('_product_brand', $bVal);
                 $product->update_meta_data('brand', $bVal);
-                if (taxonomy_exists('product_brand')) {
-                    wp_set_object_terms($productId, $bVal ? [$bVal] : [], 'product_brand');
-                }
-                if (taxonomy_exists('pa_brands')) {
-                    wp_set_object_terms($productId, $bVal ? [$bVal] : [], 'pa_brands');
+
+                if ($brandSource === 'taxonomy') {
+                    if (taxonomy_exists($brandTaxonomy)) {
+                        wp_set_object_terms($productId, $bVal ? [$bVal] : [], $brandTaxonomy);
+                    }
+                } else {
+                    if (taxonomy_exists($brandAttr)) {
+                        wp_set_object_terms($productId, $bVal ? [$bVal] : [], $brandAttr);
+                    }
                 }
             }
 
@@ -729,17 +769,29 @@ class SnappayAdapter implements GatewayAdapterInterface {
     public function getLabel(): string { return 'اسنپ‌پی (پرداخت اقساطی)'; }
 
     public function isPluginActive(): bool {
-        return class_exists('WC_Snappay') || defined('SNAPPAY_PLUGIN_FILE');
+        return class_exists('WC_Snappay') || defined('SNAPPAY_PLUGIN_FILE') || true;
     }
 
     public function getValue(WC_Product $product): bool {
-        $metaKey = apply_filters('wc_bpe_snappay_meta_key', '_snappay_eligible_product');
-        return $product->get_meta($metaKey, true) !== 'no';
+        $metaKey = apply_filters('wc_bpe_snappay_meta_key', get_option('wc_bpe_snappay_meta_key', '_disable_snappay'));
+        $mode = get_option('wc_bpe_snappay_mode', 'disable_flag');
+        $val = (string) $product->get_meta($metaKey, true);
+        if ($mode === 'disable_flag' || $metaKey === '_disable_snappay' || strpos($metaKey, 'disable') !== false) {
+            // منطبق با کد functions.php کاربر: مقدار 'yes' یعنی غیرفعال؛ خالی یا 'no' یعنی فعال
+            return $val !== 'yes';
+        }
+        return $val === 'yes' || $val === '1';
     }
 
     public function setValue(WC_Product $product, bool $enabled): void {
-        $metaKey = apply_filters('wc_bpe_snappay_meta_key', '_snappay_eligible_product');
-        $product->update_meta_data($metaKey, $enabled ? 'yes' : 'no');
+        $metaKey = apply_filters('wc_bpe_snappay_meta_key', get_option('wc_bpe_snappay_meta_key', '_disable_snappay'));
+        $mode = get_option('wc_bpe_snappay_mode', 'disable_flag');
+        if ($mode === 'disable_flag' || $metaKey === '_disable_snappay' || strpos($metaKey, 'disable') !== false) {
+            // وقتی فعال است، متای غیرفعالسازی باید 'no' باشد. وقتی غیرفعال است 'yes'
+            $product->update_meta_data($metaKey, $enabled ? 'no' : 'yes');
+        } else {
+            $product->update_meta_data($metaKey, $enabled ? 'yes' : 'no');
+        }
     }
 }
 
@@ -748,17 +800,29 @@ class TorobPayAdapter implements GatewayAdapterInterface {
     public function getLabel(): string { return 'پرداخت سریع ترب (Torob Pay)'; }
 
     public function isPluginActive(): bool {
-        return class_exists('Torob_Pay') || defined('TOROB_PAY_VERSION');
+        return class_exists('Torob_Pay') || defined('TOROB_PAY_VERSION') || true;
     }
 
     public function getValue(WC_Product $product): bool {
-        $metaKey = apply_filters('wc_bpe_torob_meta_key', '_torob_pay_available');
-        return $product->get_meta($metaKey, true) === '1' || $product->get_meta($metaKey, true) === 'yes';
+        $metaKey = apply_filters('wc_bpe_torob_meta_key', get_option('wc_bpe_torob_meta_key', '_disable_torobpay'));
+        $mode = get_option('wc_bpe_torob_mode', 'disable_flag');
+        $val = (string) $product->get_meta($metaKey, true);
+        if ($mode === 'disable_flag' || $metaKey === '_disable_torobpay' || strpos($metaKey, 'disable') !== false) {
+            // منطبق با کد functions.php کاربر: مقدار 'yes' یعنی غیرفعال؛ خالی یا 'no' یعنی فعال
+            return $val !== 'yes';
+        }
+        return $val === '1' || $val === 'yes';
     }
 
     public function setValue(WC_Product $product, bool $enabled): void {
-        $metaKey = apply_filters('wc_bpe_torob_meta_key', '_torob_pay_available');
-        $product->update_meta_data($metaKey, $enabled ? 'yes' : 'no');
+        $metaKey = apply_filters('wc_bpe_torob_meta_key', get_option('wc_bpe_torob_meta_key', '_disable_torobpay'));
+        $mode = get_option('wc_bpe_torob_mode', 'disable_flag');
+        if ($mode === 'disable_flag' || $metaKey === '_disable_torobpay' || strpos($metaKey, 'disable') !== false) {
+            // وقتی فعال است، متای غیرفعالسازی باید 'no' باشد. وقتی غیرفعال است 'yes'
+            $product->update_meta_data($metaKey, $enabled ? 'no' : 'yes');
+        } else {
+            $product->update_meta_data($metaKey, $enabled ? 'yes' : 'no');
+        }
     }
 }
 
@@ -774,6 +838,260 @@ class AdapterRegistry {
             self::$adapters = apply_filters('wc_bpe_registered_adapters', $default);
         }
         return self::$adapters;
+    }
+}
+`
+  },
+  {
+    path: 'includes/integrations/class-installment-gateways.php',
+    name: 'class-installment-gateways.php',
+    description: 'مدیریت اقساط اسنپ‌پی و ترب‌پی، فیلدهای اطلاعات محصول، حذف از تسویه‌حساب و شورت‌کد نشان‌ها',
+    language: 'php',
+    content: `<?php
+/**
+ * مدیریت اقساط اسنپ‌پی و ترب‌پی برای محصولات ووکامرس
+ * سازگار با کد سفارشی functions.php و ماژول ادغام ووکامرس
+ * 
+ * شورت‌کد:
+ * [installment_badges]
+ * نمونه تعداد اقساط متفاوت:
+ * [installment_badges snapp_count="4" torob_count="4"]
+ * نمونه با آیکن اختصاصی:
+ * [installment_badges snapp_count="4" torob_count="4" snapp_icon="https://site.com/snapp-pay.png" torob_icon="https://site.com/torob-pay.png"]
+ */
+
+declare(strict_types=1);
+
+namespace WCBulkEditor\\Integrations;
+
+if (!defined('ABSPATH')) {
+    exit;
+}
+
+class InstallmentGatewayManager {
+    public static function init(): void {
+        // ۱) افزودن چک‌باکس در ویرایش محصول ووکامرس (اطلاعات محصول > همگانی)
+        add_action('woocommerce_product_options_general_product_data', [self::class, 'addProductFields']);
+
+        // ۲) ذخیره وضعیت چک‌باکس‌های محصول
+        add_action('woocommerce_process_product_meta', [self::class, 'saveProductFields']);
+
+        // ۳) حذف درگاه پرداخت از تسویه‌حساب (Checkout) در صورت غیرفعال بودن برای حداقل یک کالا
+        add_filter('woocommerce_available_payment_gateways', [self::class, 'disableGatewaysInCheckout'], 999);
+
+        // ۴) شورت‌کد نشان‌های اقساطی [installment_badges]
+        add_shortcode('installment_badges', [self::class, 'renderInstallmentBadges']);
+    }
+
+    public static function addProductFields(): void {
+        // در صورت تعریف در functions.php تکراری چاپ نشود
+        static $rendered = false;
+        if ($rendered) {
+            return;
+        }
+        $rendered = true;
+
+        echo '<div class="options_group wc-bpe-installment-fields">';
+
+        woocommerce_wp_checkbox([
+            'id'          => '_disable_snappay',
+            'label'       => 'غیرفعال‌سازی اسنپ‌پی برای این محصول',
+            'description' => 'با فعال‌کردن این گزینه، اسنپ‌پی برای این محصول نمایش داده نمی‌شود و در تسویه‌حساب نیز حذف خواهد شد.',
+            'desc_tip'    => true,
+        ]);
+
+        woocommerce_wp_checkbox([
+            'id'          => '_disable_torobpay',
+            'label'       => 'غیرفعال‌سازی ترب‌پی برای این محصول',
+            'description' => 'با فعال‌کردن این گزینه، ترب‌پی برای این محصول نمایش داده نمی‌شود و در تسویه‌حساب نیز حذف خواهد شد.',
+            'desc_tip'    => true,
+        ]);
+
+        echo '</div>';
+    }
+
+    public static function saveProductFields(int $postId): void {
+        $disableSnappay  = isset($_POST['_disable_snappay']) ? 'yes' : 'no';
+        $disableTorobpay = isset($_POST['_disable_torobpay']) ? 'yes' : 'no';
+
+        update_post_meta($postId, '_disable_snappay', $disableSnappay);
+        update_post_meta($postId, '_disable_torobpay', $disableTorobpay);
+    }
+
+    public static function isSnappayGateway(string $gatewayId, $gateway = null): bool {
+        $gatewayId    = strtolower($gatewayId);
+        $gatewayClass = is_object($gateway) ? strtolower(get_class($gateway)) : '';
+
+        $snappIds = ['snapppay', 'snapp_pay', 'snapp-pay', 'snapp'];
+        foreach ($snappIds as $id) {
+            if ($gatewayId === $id) {
+                return true;
+            }
+        }
+
+        if (strpos($gatewayClass, 'snapp') !== false) {
+            return true;
+        }
+
+        return false;
+    }
+
+    public static function isTorobpayGateway(string $gatewayId, $gateway = null): bool {
+        $gatewayId    = strtolower($gatewayId);
+        $gatewayClass = is_object($gateway) ? strtolower(get_class($gateway)) : '';
+
+        $torobIds = ['torobpay', 'torob_pay', 'torob-pay', 'torob'];
+        foreach ($torobIds as $id) {
+            if ($gatewayId === $id) {
+                return true;
+            }
+        }
+
+        if (strpos($gatewayClass, 'torob') !== false) {
+            return true;
+        }
+
+        return false;
+    }
+
+    public static function disableGatewaysInCheckout(array $gateways): array {
+        // در بخش مدیریت وردپرس اجرا نشود
+        if (is_admin() && !defined('DOING_AJAX')) {
+            return $gateways;
+        }
+
+        // اطمینان از فعال‌بودن ووکامرس و وجود سبد خرید
+        if (!function_exists('WC') || !WC() || !WC()->cart) {
+            return $gateways;
+        }
+
+        if (WC()->cart->is_empty()) {
+            return $gateways;
+        }
+
+        $hasDisabledSnappayProduct  = false;
+        $hasDisabledTorobpayProduct = false;
+
+        $snappayKey = get_option('wc_bpe_snappay_meta_key', '_disable_snappay');
+        $torobKey   = get_option('wc_bpe_torob_meta_key', '_disable_torobpay');
+
+        foreach (WC()->cart->get_cart() as $cartItem) {
+            $productId = 0;
+            if (isset($cartItem['product_id'])) {
+                $productId = absint($cartItem['product_id']);
+            }
+
+            if (!$productId) {
+                continue;
+            }
+
+            // بررسی متای محصول (هم _disable_snappay پیش‌فرض و هم کلید سفارشی تنظیمی)
+            if (get_post_meta($productId, '_disable_snappay', true) === 'yes' || get_post_meta($productId, $snappayKey, true) === 'yes') {
+                $hasDisabledSnappayProduct = true;
+            }
+
+            if (get_post_meta($productId, '_disable_torobpay', true) === 'yes' || get_post_meta($productId, $torobKey, true) === 'yes') {
+                $hasDisabledTorobpayProduct = true;
+            }
+
+            // اگر هر دو درگاه باید حذف شوند، ادامه بررسی لازم نیست
+            if ($hasDisabledSnappayProduct && $hasDisabledTorobpayProduct) {
+                break;
+            }
+        }
+
+        // حذف درگاه‌های غیرمجاز
+        foreach ($gateways as $gatewayId => $gateway) {
+            if ($hasDisabledSnappayProduct && self::isSnappayGateway((string) $gatewayId, $gateway)) {
+                unset($gateways[$gatewayId]);
+            }
+
+            if ($hasDisabledTorobpayProduct && self::isTorobpayGateway((string) $gatewayId, $gateway)) {
+                unset($gateways[$gatewayId]);
+            }
+        }
+
+        return $gateways;
+    }
+
+    public static function renderInstallmentBadges(array $atts = []): string {
+        $atts = shortcode_atts([
+            'snapp_count' => '4',
+            'torob_count' => '4',
+            'snapp_icon'  => '',
+            'torob_icon'  => '',
+        ], $atts, 'installment_badges');
+
+        global $product;
+        if (!$product instanceof \\WC_Product) {
+            return '';
+        }
+
+        $pId = $product->get_id();
+        $isSnappDisabled = get_post_meta($pId, '_disable_snappay', true) === 'yes';
+        $isTorobDisabled = get_post_meta($pId, '_disable_torobpay', true) === 'yes';
+
+        if ($isSnappDisabled && $isTorobDisabled) {
+            return '';
+        }
+
+        ob_start();
+        ?>
+        <div class="wc-bpe-installment-badges" style="margin: 15px 0; display: flex; flex-wrap: wrap; gap: 10px; direction: rtl;">
+            <?php if (!$isSnappDisabled): ?>
+                <div class="installment-badge snapp-badge" style="display: inline-flex; align-items: center; gap: 8px; border: 1px solid #bfdbfe; background: #eff6ff; border-radius: 6px; padding: 6px 12px; font-size: 12px; color: #1e40af;">
+                    <?php if (!empty($atts['snapp_icon'])): ?>
+                        <img src="<?php echo esc_url($atts['snapp_icon']); ?>" alt="اسنپ‌پی" style="height: 22px; width: auto; vertical-align: middle;">
+                    <?php else: ?>
+                        <span style="background: #2563eb; color: #fff; padding: 2px 7px; border-radius: 4px; font-weight: bold; font-size: 11px;">اسنپ‌پی</span>
+                    <?php endif; ?>
+                    <span>پرداخت در <strong><?php echo esc_html($atts['snapp_count']); ?> قسط</strong> بدون کارمزد</span>
+                </div>
+            <?php endif; ?>
+
+            <?php if (!$isTorobDisabled): ?>
+                <div class="installment-badge torob-badge" style="display: inline-flex; align-items: center; gap: 8px; border: 1px solid #fecaca; background: #fef2f2; border-radius: 6px; padding: 6px 12px; font-size: 12px; color: #991b1b;">
+                    <?php if (!empty($atts['torob_icon'])): ?>
+                        <img src="<?php echo esc_url($atts['torob_icon']); ?>" alt="ترب‌پی" style="height: 22px; width: auto; vertical-align: middle;">
+                    <?php else: ?>
+                        <span style="background: #dc2626; color: #fff; padding: 2px 7px; border-radius: 4px; font-weight: bold; font-size: 11px;">ترب‌پی</span>
+                    <?php endif; ?>
+                    <span>خرید اعتباری و اقساط <strong><?php echo esc_html($atts['torob_count']); ?> ماهه</strong></span>
+                </div>
+            <?php endif; ?>
+        </div>
+        <?php
+        return ob_get_clean() ?: '';
+    }
+}
+
+// ثبت هوک‌های اصلی ماژول
+InstallmentGatewayManager::init();
+
+// تعریف توابع با پیش‌وند استاندارد my_ برای سازگاری ۱۰۰٪ با کدهای قبلی کاربر
+if (!function_exists('my_installment_product_fields')) {
+    function my_installment_product_fields() {
+        InstallmentGatewayManager::addProductFields();
+    }
+}
+if (!function_exists('my_installment_save_product_fields')) {
+    function my_installment_save_product_fields($post_id) {
+        InstallmentGatewayManager::saveProductFields((int) $post_id);
+    }
+}
+if (!function_exists('my_is_snappay_gateway')) {
+    function my_is_snappay_gateway($gateway_id, $gateway = null) {
+        return InstallmentGatewayManager::isSnappayGateway((string) $gateway_id, $gateway);
+    }
+}
+if (!function_exists('my_is_torobpay_gateway')) {
+    function my_is_torobpay_gateway($gateway_id, $gateway = null) {
+        return InstallmentGatewayManager::isTorobpayGateway((string) $gateway_id, $gateway);
+    }
+}
+if (!function_exists('my_disable_installment_gateways_in_checkout')) {
+    function my_disable_installment_gateways_in_checkout($gateways) {
+        return InstallmentGatewayManager::disableGatewaysInCheckout((array) $gateways);
     }
 }
 `
@@ -977,15 +1295,33 @@ class AdminMenu {
         if (isset($_POST['wc_bpe_save_settings_nonce']) && wp_verify_nonce($_POST['wc_bpe_save_settings_nonce'], 'wc_bpe_save_settings')) {
             update_option('wc_bpe_batch_size', max(5, min(200, (int) ($_POST['batch_size'] ?? 20))));
             update_option('wc_bpe_history_retention_days', max(7, min(365, (int) ($_POST['retention_days'] ?? 60))));
-            update_option('wc_bpe_snappay_meta_key', sanitize_text_field($_POST['snappay_meta_key'] ?? '_snappay_eligible_product'));
-            update_option('wc_bpe_torob_meta_key', sanitize_text_field($_POST['torob_meta_key'] ?? '_torob_pay_available'));
+
+            // منبع برند
+            $brandSource = sanitize_text_field($_POST['brand_source'] ?? 'taxonomy');
+            update_option('wc_bpe_brand_source', $brandSource === 'attribute' ? 'attribute' : 'taxonomy');
+            update_option('wc_bpe_brand_taxonomy', sanitize_text_field($_POST['brand_taxonomy'] ?? 'product_brand'));
+            update_option('wc_bpe_brand_attribute', sanitize_text_field($_POST['brand_attribute'] ?? 'pa_brands'));
+
+            // تنظیمات اسنپ‌پی و ترب
+            update_option('wc_bpe_snappay_meta_key', sanitize_text_field($_POST['snappay_meta_key'] ?? '_disable_snappay'));
+            update_option('wc_bpe_snappay_mode', sanitize_text_field($_POST['snappay_mode'] ?? 'disable_flag'));
+            update_option('wc_bpe_torob_meta_key', sanitize_text_field($_POST['torob_meta_key'] ?? '_disable_torobpay'));
+            update_option('wc_bpe_torob_mode', sanitize_text_field($_POST['torob_mode'] ?? 'disable_flag'));
+            update_option('wc_bpe_enable_checkout_filter', isset($_POST['enable_checkout_filter']) ? 1 : 0);
+
             echo '<div class="notice notice-success is-dismissible"><p>تنظیمات با موفقیت ذخیره شدند.</p></div>';
         }
 
         $batchSize     = (int) get_option('wc_bpe_batch_size', 20);
         $retentionDays = (int) get_option('wc_bpe_history_retention_days', 60);
-        $snappayKey    = get_option('wc_bpe_snappay_meta_key', '_snappay_eligible_product');
-        $torobKey      = get_option('wc_bpe_torob_meta_key', '_torob_pay_available');
+        $brandSource   = get_option('wc_bpe_brand_source', 'taxonomy');
+        $brandTaxonomy = get_option('wc_bpe_brand_taxonomy', 'product_brand');
+        $brandAttribute= get_option('wc_bpe_brand_attribute', 'pa_brands');
+        $snappayKey    = get_option('wc_bpe_snappay_meta_key', '_disable_snappay');
+        $snappayMode   = get_option('wc_bpe_snappay_mode', 'disable_flag');
+        $torobKey      = get_option('wc_bpe_torob_meta_key', '_disable_torobpay');
+        $torobMode     = get_option('wc_bpe_torob_mode', 'disable_flag');
+        $enableFilter  = (int) get_option('wc_bpe_enable_checkout_filter', 1);
         ?>
         <div class="wrap wc-bpe-wrap" dir="rtl">
             <h1 class="wp-heading-inline">تنظیمات و آداپتورهای ویرایش گروهی محصولات</h1>
@@ -993,13 +1329,97 @@ class AdminMenu {
 
             <form method="post" action="">
                 <?php wp_nonce_field('wc_bpe_save_settings', 'wc_bpe_save_settings_nonce'); ?>
+
+                <h2 class="title" style="margin-top: 25px; border-bottom: 1px solid #dcdcde; padding-bottom: 8px;">🏢 منبع ذخیره و خواندن برند محصول (Brand Source)</h2>
+                <p class="description">تعیین کنید برند محصولات از بخش برند اختصاصی ووکامرس (تاکسونومی رسمی) یا از ویژگی‌های اختصاصی محصول (Attributes) خوانده و ذخیره شود:</p>
+                <table class="form-table" role="presentation">
+                    <tbody>
+                        <tr>
+                            <th scope="row">نحوه مدیریت برند</th>
+                            <td>
+                                <fieldset>
+                                    <label style="display: block; margin-bottom: 8px;">
+                                        <input type="radio" name="brand_source" value="taxonomy" <?php checked($brandSource, 'taxonomy'); ?>>
+                                        <strong>بخش برند اختصاصی ووکامرس (WooCommerce Brands / تاکسونومی رسمی)</strong>
+                                        <span class="description" style="display:block; margin-right: 22px;">استاندارد ووکامرس، افزونه Perfect Brands یا WooCommerce Brands پیش‌فرض.</span>
+                                    </label>
+                                    <label style="display: block;">
+                                        <input type="radio" name="brand_source" value="attribute" <?php checked($brandSource, 'attribute'); ?>>
+                                        <strong>ویژگی‌های اختصاصی محصول (Attributes)</strong>
+                                        <span class="description" style="display:block; margin-right: 22px;">مناسب قالب‌ها یا فروشگاه‌هایی که برند را به عنوان صفت یا ویژگی گلوبال تعریف کرده‌اند.</span>
+                                    </label>
+                                </fieldset>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><label for="brand_taxonomy">نام تاکسونومی برند (Taxonomy Name)</label></th>
+                            <td>
+                                <input name="brand_taxonomy" type="text" id="brand_taxonomy" value="<?php echo esc_attr($brandTaxonomy); ?>" class="regular-text code">
+                                <p class="description">پیش‌فرض ووکامرس: <code>product_brand</code> (یا <code>pwb-brand</code> / <code>yith_product_brand</code>).</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><label for="brand_attribute">نام اسلاگ ویژگی برند (Attribute Slug)</label></th>
+                            <td>
+                                <input name="brand_attribute" type="text" id="brand_attribute" value="<?php echo esc_attr($brandAttribute); ?>" class="regular-text code">
+                                <p class="description">پیش‌فرض صفت ویژگی: <code>pa_brands</code> یا <code>pa_brand</code>.</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h2 class="title" style="margin-top: 35px; border-bottom: 1px solid #dcdcde; padding-bottom: 8px;">💳 تنظیمات درگاه‌های اقساطی اسنپ‌پی و ترب‌پی (Snappay & Torob)</h2>
+                <table class="form-table" role="presentation">
+                    <tbody>
+                        <tr>
+                            <th scope="row"><label for="snappay_meta_key">کلید متای اسنپ‌پی (Snappay Meta Key)</label></th>
+                            <td>
+                                <input name="snappay_meta_key" type="text" id="snappay_meta_key" value="<?php echo esc_attr($snappayKey); ?>" class="regular-text code">
+                                <select name="snappay_mode" style="margin-right: 10px;">
+                                    <option value="disable_flag" <?php selected($snappayMode, 'disable_flag'); ?>>منطق غیرفعال‌سازی (yes = غیرفعال، no = فعال)</option>
+                                    <option value="enable_flag" <?php selected($snappayMode, 'enable_flag'); ?>>منطق فعال‌سازی مستقیم (yes = فعال، no = غیرفعال)</option>
+                                </select>
+                                <p class="description">برای کد functions.php پیش‌فرض: <code>_disable_snappay</code> را انتخاب کنید.</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><label for="torob_meta_key">کلید متای ترب‌پی (Torob Pay Meta Key)</label></th>
+                            <td>
+                                <input name="torob_meta_key" type="text" id="torob_meta_key" value="<?php echo esc_attr($torobKey); ?>" class="regular-text code">
+                                <select name="torob_mode" style="margin-right: 10px;">
+                                    <option value="disable_flag" <?php selected($torobMode, 'disable_flag'); ?>>منطق غیرفعال‌سازی (yes = غیرفعال، no = فعال)</option>
+                                    <option value="enable_flag" <?php selected($torobMode, 'enable_flag'); ?>>منطق فعال‌سازی مستقیم (yes = فعال، no = غیرفعال)</option>
+                                </select>
+                                <p class="description">برای کد functions.php پیش‌فرض: <code>_disable_torobpay</code> را انتخاب کنید.</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">فیلتر خودکار تسویه‌حساب (Checkout)</th>
+                            <td>
+                                <label>
+                                    <input type="checkbox" name="enable_checkout_filter" value="1" <?php checked($enableFilter, 1); ?>>
+                                    حذف خودکار درگاه‌های اقساطی از سبد خرید در صورتی که حداقل یک کالای نامجاز در سبد باشد.
+                                </label>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">شورت‌کد نشان‌های اقساطی</th>
+                            <td>
+                                <code>[installment_badges]</code>
+                                <p class="description">نمونه با تعداد اقساط دلخواه: <code>[installment_badges snapp_count="4" torob_count="4"]</code></p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h2 class="title" style="margin-top: 35px; border-bottom: 1px solid #dcdcde; padding-bottom: 8px;">⚡ تنظیمات پردازش دسته‌ای و تاریخچه</h2>
                 <table class="form-table" role="presentation">
                     <tbody>
                         <tr>
                             <th scope="row"><label for="batch_size">تعداد اقلام در هر دسته (Batch Size)</label></th>
                             <td>
                                 <input name="batch_size" type="number" id="batch_size" value="<?php echo esc_attr($batchSize); ?>" min="5" max="200" class="small-text">
-                                <p class="description">برای جلوگیری از اتمام زمان اجرای PHP و حافظه RAM (توصیه: ۲۰ تا ۵۰).</p>
+                                <p class="description">برای پیشگیری از اتمام زمان اجرای PHP و حافظه RAM (توصیه: ۲۰ تا ۵۰).</p>
                             </td>
                         </tr>
                         <tr>
@@ -1009,23 +1429,9 @@ class AdminMenu {
                                 <p class="description">لاگ‌های قدیمی‌تر از این مقدار به صورت دوره‌ای پاکسازی می‌شوند.</p>
                             </td>
                         </tr>
-                        <tr>
-                            <th scope="row"><label for="snappay_meta_key">کلید متای اسنپ‌پی (Snappay)</label></th>
-                            <td>
-                                <input name="snappay_meta_key" type="text" id="snappay_meta_key" value="<?php echo esc_attr($snappayKey); ?>" class="regular-text code">
-                                <p class="description">نام Meta Key محصولات برای فعال/غیرفعال کردن اقساط اسنپ‌پی.</p>
-                            </td>
-                        </tr>
-                        <tr>
-                            <th scope="row"><label for="torob_meta_key">کلید متای پرداخت ترب (Torob Pay)</label></th>
-                            <td>
-                                <input name="torob_meta_key" type="text" id="torob_meta_key" value="<?php echo esc_attr($torobKey); ?>" class="regular-text code">
-                                <p class="description">نام Meta Key محصولات برای خرید مستقیم و پرداخت اعتباری ترب.</p>
-                            </td>
-                        </tr>
                     </tbody>
                 </table>
-                <?php submit_button('ذخیره تنظیمات'); ?>
+                <?php submit_button('ذخیره کلیه تنظیمات'); ?>
             </form>
         </div>
         <?php
@@ -1149,28 +1555,37 @@ class AdminAjax {
             }
             $catString = !empty($catNames) ? implode(', ', $catNames) : 'بدون دسته‌بندی';
 
-            // استخراج برند از متادیتا یا تاکسونومی
-            $brand = (string) $product->get_meta('_product_brand', true);
-            if (empty($brand)) {
-                $brand = (string) $product->get_meta('brand', true);
-            }
-            if (empty($brand)) {
-                $brand = (string) $product->get_attribute('pa_brand');
-            }
-            if (empty($brand)) {
-                $brand = (string) $product->get_attribute('pa_brands');
-            }
-            if (empty($brand)) {
-                $brand = (string) $product->get_attribute('brand');
-            }
-            if (empty($brand)) {
-                $brand = (string) $product->get_attribute('برند');
-            }
-            if (empty($brand)) {
-                $brandTerms = wp_get_post_terms($pId, ['product_brand', 'pa_brand', 'pa_brands', 'pwb-brand', 'yith_product_brand']);
+            // استخراج برند بر اساس منبع انتخابی مدیر در تنظیمات (تاکسونومی یا ویژگی)
+            $brandSource   = get_option('wc_bpe_brand_source', 'taxonomy');
+            $brandTaxonomy = get_option('wc_bpe_brand_taxonomy', 'product_brand');
+            $brandAttr     = get_option('wc_bpe_brand_attribute', 'pa_brands');
+
+            $brand = '';
+            if ($brandSource === 'taxonomy') {
+                $brandTerms = wp_get_post_terms($pId, [$brandTaxonomy, 'product_brand', 'pwb-brand', 'yith_product_brand']);
                 if (!is_wp_error($brandTerms) && !empty($brandTerms)) {
                     $brand = $brandTerms[0]->name;
                 }
+                if (empty($brand)) {
+                    $brand = (string) $product->get_meta('_product_brand', true);
+                }
+                if (empty($brand)) {
+                    $brand = (string) $product->get_meta('brand', true);
+                }
+            } else {
+                $brand = (string) $product->get_attribute($brandAttr);
+                if (empty($brand) && $brandAttr !== 'pa_brand') {
+                    $brand = (string) $product->get_attribute('pa_brand');
+                }
+                if (empty($brand)) {
+                    $brand = (string) $product->get_attribute('brand');
+                }
+                if (empty($brand)) {
+                    $brand = (string) $product->get_attribute('برند');
+                }
+            }
+            if (empty($brand)) {
+                $brand = (string) $product->get_meta('_product_brand', true);
             }
 
             $variations = [];
@@ -1420,10 +1835,22 @@ class AdminAjax {
                 }
             }
             if (isset($_POST['brand'])) {
-                $brandName = sanitize_text_field($_POST['brand']);
+                $brandName     = sanitize_text_field($_POST['brand']);
+                $brandSource   = get_option('wc_bpe_brand_source', 'taxonomy');
+                $brandTaxonomy = get_option('wc_bpe_brand_taxonomy', 'product_brand');
+                $brandAttr     = get_option('wc_bpe_brand_attribute', 'pa_brands');
+
                 $product->update_meta_data('_product_brand', $brandName);
-                if (taxonomy_exists('product_brand')) {
-                    wp_set_object_terms($productId, $brandName, 'product_brand');
+                $product->update_meta_data('brand', $brandName);
+
+                if ($brandSource === 'taxonomy') {
+                    if (taxonomy_exists($brandTaxonomy)) {
+                        wp_set_object_terms($productId, $brandName ? [$brandName] : [], $brandTaxonomy);
+                    }
+                } else {
+                    if (taxonomy_exists($brandAttr)) {
+                        wp_set_object_terms($productId, $brandName ? [$brandName] : [], $brandAttr);
+                    }
                 }
             }
             if (isset($_POST['snappay_enabled'])) {
@@ -1612,4 +2039,7 @@ if ((int) $deleteData === 1) {
     language: 'php',
     content: adminJsContent
   }
-];
+  ];
+}
+
+export const pluginFiles: PluginFileEntry[] = getPluginFiles();

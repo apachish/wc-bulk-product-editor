@@ -974,11 +974,11 @@ export const WizardStep1Filters: React.FC<Props> = ({
         </div>
 
         {/* Products Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-right text-xs">
-            <thead className="bg-[#f0f0f1] text-[#2c3338] border-b border-[#c3c4c7] font-semibold">
-              <tr>
-                <th className="py-2.5 px-3 w-10 text-center">
+        <div className="overflow-x-auto overflow-y-auto max-h-[520px] relative border border-[#c3c4c7] rounded-sm">
+          <table className="w-full text-right text-xs whitespace-nowrap border-separate border-spacing-0">
+            <thead className="select-none sticky top-0 z-20">
+              <tr className="bg-[#f0f0f1] text-[#2c3338] font-semibold">
+                <th className="sticky top-0 z-20 bg-[#f0f0f1] border-b-2 border-[#c3c4c7] shadow-[0_1px_2px_rgba(0,0,0,0.06)] py-2.5 px-3 w-10 text-center">
                   <input
                     type="checkbox"
                     checked={isAllFilteredSelected}
@@ -990,18 +990,18 @@ export const WizardStep1Filters: React.FC<Props> = ({
                     title={isAllFilteredSelected ? 'لغو انتخاب همه' : 'انتخاب همه فیلترشده‌ها'}
                   />
                 </th>
-                <th className="py-2.5 px-2 w-14 font-mono">شناسه</th>
-                <th className="py-2.5 px-2 w-14 text-center">تصویر</th>
-                <th className="py-2.5 px-3 min-w-[220px]">نام و مشخصات محصول</th>
-                <th className="py-2.5 px-3 w-32 font-mono">کد کالا (SKU)</th>
-                <th className="py-2.5 px-3 w-24">نوع کالا</th>
-                <th className="py-2.5 px-3 w-32">قیمت فروش</th>
-                <th className="py-2.5 px-3 w-28">موجودی انبار</th>
-                <th className="py-2.5 px-3 w-28">اسنپ‌پی / ترب</th>
-                <th className="py-2.5 px-3 w-24">وضعیت</th>
+                <th className="sticky top-0 z-20 bg-[#f0f0f1] border-b-2 border-[#c3c4c7] shadow-[0_1px_2px_rgba(0,0,0,0.06)] py-2.5 px-2 w-14 font-mono">شناسه</th>
+                <th className="sticky top-0 z-20 bg-[#f0f0f1] border-b-2 border-[#c3c4c7] shadow-[0_1px_2px_rgba(0,0,0,0.06)] py-2.5 px-2 w-14 text-center">تصویر</th>
+                <th className="sticky top-0 z-20 bg-[#f0f0f1] border-b-2 border-[#c3c4c7] shadow-[0_1px_2px_rgba(0,0,0,0.06)] py-2.5 px-3 min-w-[220px]">نام و مشخصات محصول</th>
+                <th className="sticky top-0 z-20 bg-[#f0f0f1] border-b-2 border-[#c3c4c7] shadow-[0_1px_2px_rgba(0,0,0,0.06)] py-2.5 px-3 w-32 font-mono">کد کالا (SKU)</th>
+                <th className="sticky top-0 z-20 bg-[#f0f0f1] border-b-2 border-[#c3c4c7] shadow-[0_1px_2px_rgba(0,0,0,0.06)] py-2.5 px-3 w-24">نوع کالا</th>
+                <th className="sticky top-0 z-20 bg-[#f0f0f1] border-b-2 border-[#c3c4c7] shadow-[0_1px_2px_rgba(0,0,0,0.06)] py-2.5 px-3 w-32">قیمت فروش</th>
+                <th className="sticky top-0 z-20 bg-[#f0f0f1] border-b-2 border-[#c3c4c7] shadow-[0_1px_2px_rgba(0,0,0,0.06)] py-2.5 px-3 w-28">موجودی انبار</th>
+                <th className="sticky top-0 z-20 bg-[#f0f0f1] border-b-2 border-[#c3c4c7] shadow-[0_1px_2px_rgba(0,0,0,0.06)] py-2.5 px-3 w-28">اسنپ‌پی / ترب</th>
+                <th className="sticky top-0 z-20 bg-[#f0f0f1] border-b-2 border-[#c3c4c7] shadow-[0_1px_2px_rgba(0,0,0,0.06)] py-2.5 px-3 w-24">وضعیت</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#f0f0f1]">
+            <tbody>
               {paginatedProducts.length === 0 ? (
                 <tr>
                   <td colSpan={10} className="py-12 text-center text-[#646970]">
@@ -1036,7 +1036,7 @@ export const WizardStep1Filters: React.FC<Props> = ({
                       }`}
                     >
                       {/* Checkbox */}
-                      <td className="py-2.5 px-3 text-center" onClick={e => e.stopPropagation()}>
+                      <td className="py-2.5 px-3 text-center border-b border-[#f0f0f1]" onClick={e => e.stopPropagation()}>
                         <input
                           type="checkbox"
                           checked={isSelected}
@@ -1046,12 +1046,12 @@ export const WizardStep1Filters: React.FC<Props> = ({
                       </td>
 
                       {/* ID */}
-                      <td className="py-2.5 px-2 font-mono text-[#646970]">
+                      <td className="py-2.5 px-2 font-mono text-[#646970] border-b border-[#f0f0f1]">
                         #{p.id}
                       </td>
 
                       {/* Thumbnail */}
-                      <td className="py-2 px-2 text-center" onClick={e => e.stopPropagation()}>
+                      <td className="py-2 px-2 text-center border-b border-[#f0f0f1]" onClick={e => e.stopPropagation()}>
                         <div className="w-9 h-9 rounded border border-[#dcdcde] bg-gray-100 overflow-hidden mx-auto flex items-center justify-center">
                           {p.thumbnail ? (
                             <img
@@ -1066,7 +1066,7 @@ export const WizardStep1Filters: React.FC<Props> = ({
                       </td>
 
                       {/* Title & Taxonomy */}
-                      <td className="py-2.5 px-3">
+                      <td className="py-2.5 px-3 border-b border-[#f0f0f1]">
                         <div className="font-semibold text-[#1d2327] hover:text-[#2271b1]">
                           {p.name}
                         </div>
@@ -1086,12 +1086,12 @@ export const WizardStep1Filters: React.FC<Props> = ({
                       </td>
 
                       {/* SKU */}
-                      <td className="py-2.5 px-3 font-mono text-[#50575e]">
+                      <td className="py-2.5 px-3 font-mono text-[#50575e] border-b border-[#f0f0f1]">
                         {p.sku || '—'}
                       </td>
 
                       {/* Type */}
-                      <td className="py-2.5 px-3">
+                      <td className="py-2.5 px-3 border-b border-[#f0f0f1]">
                         <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-medium ${
                           p.type === 'variable'
                             ? 'bg-purple-100 text-purple-800 border border-purple-200'
@@ -1102,7 +1102,7 @@ export const WizardStep1Filters: React.FC<Props> = ({
                       </td>
 
                       {/* Price */}
-                      <td className="py-2.5 px-3 font-medium">
+                      <td className="py-2.5 px-3 font-medium border-b border-[#f0f0f1]">
                         {hasSale ? (
                           <div>
                             <div className="text-[#d63638] font-bold">
@@ -1122,7 +1122,7 @@ export const WizardStep1Filters: React.FC<Props> = ({
                       </td>
 
                       {/* Stock */}
-                      <td className="py-2.5 px-3">
+                      <td className="py-2.5 px-3 border-b border-[#f0f0f1]">
                         <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium ${
                           p.stockStatus === 'instock'
                             ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
@@ -1133,7 +1133,7 @@ export const WizardStep1Filters: React.FC<Props> = ({
                       </td>
 
                       {/* Payment Adapters */}
-                      <td className="py-2.5 px-3">
+                      <td className="py-2.5 px-3 border-b border-[#f0f0f1]">
                         <div className="flex items-center gap-1 text-[11px]">
                           <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
                             p.snappayEnabled
@@ -1153,7 +1153,7 @@ export const WizardStep1Filters: React.FC<Props> = ({
                       </td>
 
                       {/* Post Status */}
-                      <td className="py-2.5 px-3">
+                      <td className="py-2.5 px-3 border-b border-[#f0f0f1]">
                         <span className={`text-[11px] font-medium ${
                           p.status === 'publish' ? 'text-emerald-700' : 'text-amber-700'
                         }`}>

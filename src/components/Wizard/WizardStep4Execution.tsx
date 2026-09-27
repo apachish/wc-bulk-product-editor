@@ -149,7 +149,7 @@ export const WizardStep4Execution: React.FC<Props> = ({
               Object.keys(item.afterSnapshot).forEach(snapKey => {
                 if (snapKey.startsWith('attr_')) {
                   const rawAttrName = snapKey.substring(5);
-                  const attrVal = String(item.afterSnapshot[snapKey]);
+                  const attrVal = String((item.afterSnapshot as Record<string, any>)[snapKey]);
                   if (!prod.attributes) prod.attributes = {};
                   if (attrVal === 'حذف ویژگی') {
                     delete prod.attributes[rawAttrName];

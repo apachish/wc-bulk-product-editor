@@ -1,7 +1,8 @@
 import JSZip from 'jszip';
-import { pluginFiles } from '../pluginFiles/phpFiles';
+import { getPluginFiles, pluginFiles } from '../pluginFiles/phpFiles';
+import { PluginSettings } from '../types';
 
-export async function generatePluginZip(): Promise<Blob> {
+export async function generatePluginZip(settings?: PluginSettings): Promise<Blob> {
   const zip = new JSZip();
   const folder = zip.folder('wc-bulk-product-editor-pro');
 
@@ -25,8 +26,9 @@ export async function generatePluginZip(): Promise<Blob> {
     folder.folder(dir);
   });
 
-  // Add all plugin source files and documentation
-  pluginFiles.forEach(file => {
+  // Add all plugin source files and documentation reflecting the active settings
+  const files = settings ? getPluginFiles(settings) : pluginFiles;
+  files.forEach(file => {
     folder.file(file.path, file.content);
   });
 

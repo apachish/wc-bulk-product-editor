@@ -87,43 +87,43 @@ export const WizardStep3Preview: React.FC<Props> = ({
           </span>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-right text-xs">
-            <thead className="bg-[#f0f0f1] text-[#2c3338] border-b border-[#c3c4c7] font-semibold">
-              <tr>
-                <th className="py-2.5 px-3 w-20">شناسه</th>
-                <th className="py-2.5 px-3">نام و مشخصات قلم کالا</th>
-                <th className="py-2.5 px-3 w-32">کد محصول (SKU)</th>
-                <th className="py-2.5 px-3 w-24">سطح</th>
-                <th className="py-2.5 px-3">تغییرات تفصیلی (قبل ← بعد)</th>
+        <div className="overflow-x-auto overflow-y-auto max-h-[500px] relative">
+          <table className="w-full text-right text-xs border-separate border-spacing-0">
+            <thead className="select-none sticky top-0 z-20">
+              <tr className="bg-[#f0f0f1] text-[#2c3338] font-semibold">
+                <th className="sticky top-0 z-20 bg-[#f0f0f1] border-b-2 border-[#c3c4c7] shadow-[0_1px_2px_rgba(0,0,0,0.06)] py-2.5 px-3 w-20">شناسه</th>
+                <th className="sticky top-0 z-20 bg-[#f0f0f1] border-b-2 border-[#c3c4c7] shadow-[0_1px_2px_rgba(0,0,0,0.06)] py-2.5 px-3">نام و مشخصات قلم کالا</th>
+                <th className="sticky top-0 z-20 bg-[#f0f0f1] border-b-2 border-[#c3c4c7] shadow-[0_1px_2px_rgba(0,0,0,0.06)] py-2.5 px-3 w-32">کد محصول (SKU)</th>
+                <th className="sticky top-0 z-20 bg-[#f0f0f1] border-b-2 border-[#c3c4c7] shadow-[0_1px_2px_rgba(0,0,0,0.06)] py-2.5 px-3 w-24">سطح</th>
+                <th className="sticky top-0 z-20 bg-[#f0f0f1] border-b-2 border-[#c3c4c7] shadow-[0_1px_2px_rgba(0,0,0,0.06)] py-2.5 px-3">تغییرات تفصیلی (قبل ← بعد)</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#f0f0f1]">
+            <tbody>
               {previews.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-8 text-center text-[#646970]">
+                  <td colSpan={5} className="py-8 text-center text-[#646970] border-b border-[#f0f0f1]">
                     هیچ تغییری با توجه به مقادیر فعلی و قواعد تعیین‌شده به وجود نیامد یا همه فیلدها روی «بدون تغییر» هستند.
                   </td>
                 </tr>
               ) : (
                 previews.map((item, idx) => (
                   <tr key={`${item.productId}-${idx}`} className="hover:bg-[#f6f7f7]">
-                    <td className="py-3 px-3 font-mono text-[#646970]">#{item.productId}</td>
-                    <td className="py-3 px-3">
+                    <td className="py-3 px-3 font-mono text-[#646970] border-b border-[#f0f0f1]">#{item.productId}</td>
+                    <td className="py-3 px-3 border-b border-[#f0f0f1]">
                       <div className="font-semibold text-[#1d2327]">{item.name}</div>
                       {item.parentId && (
                         <div className="text-[11px] text-[#2271b1]">وابسته به محصول اصلی #{item.parentId}</div>
                       )}
                     </td>
-                    <td className="py-3 px-3 font-mono text-[#50575e]">{item.sku}</td>
-                    <td className="py-3 px-3">
+                    <td className="py-3 px-3 font-mono text-[#50575e] border-b border-[#f0f0f1]">{item.sku}</td>
+                    <td className="py-3 px-3 border-b border-[#f0f0f1]">
                       <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-medium ${
                         item.type === 'variation' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
                       }`}>
                         {item.type === 'variation' ? 'متغیر فرعی' : 'محصول اصلی'}
                       </span>
                     </td>
-                    <td className="py-3 px-3">
+                    <td className="py-3 px-3 border-b border-[#f0f0f1]">
                       <div className="space-y-1.5">
                         {item.diffs.map((d, dIdx) => (
                           <div key={dIdx} className="flex flex-wrap items-center gap-2 bg-[#f9f9f9] p-1.5 rounded border border-[#e5e5e5]">

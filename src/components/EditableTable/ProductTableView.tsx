@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Product, ProductType, PostStatus, StockStatus } from '../../types';
+import { Product, ProductType, PostStatus, StockStatus, PluginSettings } from '../../types';
 import { DescriptionModal } from './DescriptionModal';
 import { sampleBrandsList } from '../../mockData';
 import {
@@ -30,18 +30,59 @@ import {
 
 interface Props {
   products: Product[];
+  settings?: PluginSettings;
   onSaveProducts: (updatedProducts: Product[]) => void;
   onGoToWizard?: (selectedIds: number[]) => void;
 }
 
 export const ProductTableView: React.FC<Props> = ({
   products,
+  settings,
   onSaveProducts,
   onGoToWizard
 }) => {
   // Local editable copy of products
   const [tableData, setTableData] = useState<Product[]>(() => JSON.parse(JSON.stringify(products)));
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
+
+  // Brand Source configuration from settings
+  const brandSource = settings?.brandSource ?? 'taxonomy';
+  const brandAttrKey = settings?.brandAttributeName || 'pa_brands';
+  const brandTaxonomyKey = settings?.brandTaxonomyName || 'product_brand';
+
+  // Helper to extract brand according to user's setting (taxonomy or attributes)
+  const getProductBrand = (p: Product): string => {
+    if (brandSource === 'attribute') {
+      return (
+        p.attributes?.[brandAttrKey] ||
+        p.attributes?.['pa_brands'] ||
+        p.attributes?.['pa_brand'] ||
+        p.attributes?.['brand'] ||
+        p.attributes?.['برند'] ||
+        p.brand ||
+        ''
+      );
+    }
+    return p.brand || '';
+  };
+
+  // Helper to update brand in product
+  const handleBrandChange = (productId: number, val: string) => {
+    handleCellChange(productId, 'brand', val);
+    if (brandSource === 'attribute') {
+      setTableData(prev =>
+        prev.map(item => {
+          if (item.id === productId) {
+            const currentAttrs = item.attributes ? { ...item.attributes } : {};
+            currentAttrs[brandAttrKey] = val;
+            return { ...item, brand: val, attributes: currentAttrs };
+          }
+          return item;
+        })
+      );
+      setModifiedProductIds(prev => new Set(prev).add(productId));
+    }
+  };
 
   // Filter States
   const [searchTerm, setSearchTerm] = useState('');
@@ -83,8 +124,11 @@ export const ProductTableView: React.FC<Props> = ({
   const brandsList = useMemo(() => {
     const list = new Set<string>(sampleBrandsList);
     tableData.forEach(p => {
+      const b = getProductBrand(p);
+      if (b) list.add(b);
       if (p.brand) list.add(p.brand);
       if (p.attributes) {
+        if (p.attributes[brandAttrKey]) list.add(p.attributes[brandAttrKey]);
         if (p.attributes['pa_brands']) list.add(p.attributes['pa_brands']);
         if (p.attributes['pa_brand']) list.add(p.attributes['pa_brand']);
         if (p.attributes['brand']) list.add(p.attributes['brand']);
@@ -92,7 +136,7 @@ export const ProductTableView: React.FC<Props> = ({
       }
     });
     return Array.from(list).filter(Boolean);
-  }, [tableData]);
+  }, [tableData, brandSource, brandAttrKey]);
 
   // Dual-scroll synchronization refs for effortless horizontal scrolling
   const topScrollRef = useRef<HTMLDivElement>(null);
@@ -331,7 +375,7 @@ export const ProductTableView: React.FC<Props> = ({
       if (categoryFilter && p.category !== categoryFilter) return false;
 
       // Brand
-      if (brandFilter && p.brand !== brandFilter) return false;
+      if (brandFilter && getProductBrand(p) !== brandFilter) return false;
 
       // Type
       if (typeFilter && p.type !== typeFilter) return false;
@@ -1028,10 +1072,10 @@ export const ProductTableView: React.FC<Props> = ({
           className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-270px)] min-h-[440px] relative focus:outline-none"
           tabIndex={0}
         >
-          <table className="w-full text-right text-xs whitespace-nowrap border-collapse">
-            <thead className="bg-[#f0f0f1] text-[#2c3338] border-b border-[#c3c4c7] font-semibold select-none sticky top-0 z-10 shadow-xs">
-              <tr>
-                <th className="py-2.5 px-3 w-8 text-center">
+          <table className="w-full text-right text-xs whitespace-nowrap border-separate border-spacing-0">
+            <thead className="select-none sticky top-0 z-20">
+              <tr className="bg-[#f0f0f1] text-[#2c3338] font-semibold">
+                <th className="sticky top-0 z-20 bg-[#f0f0f1] border-b-2 border-[#c3c4c7] shadow-[0_1px_2px_rgba(0,0,0,0.06)] py-2.5 px-3 w-8 text-center">
                   <input
                     type="checkbox"
                     checked={isAllFilteredSelected}
@@ -1042,34 +1086,64 @@ export const ProductTableView: React.FC<Props> = ({
                     className="w-4 h-4 rounded text-[#2271b1] focus:ring-0 cursor-pointer"
                   />
                 </th>
-                <th className="py-2.5 px-2 w-14">
+                <th className="sticky top-0 z-20 bg-[#f0f0f1] border-b-2 border-[#c3c4c7] shadow-[0_1px_2px_rgba(0,0,0,0.06)] py-2.5 px-2 w-14">
                   <div className="flex items-center gap-1 text-[#2271b1] font-bold">
                     <span>ID</span>
                     <ArrowUpDown className="w-3 h-3" />
                   </div>
                 </th>
-                <th className="py-2.5 px-2 w-16 text-center">Thumbnail</th>
-                <th className="py-2.5 px-3 min-w-[220px]">Title (نام محصول)</th>
-                <th className="py-2.5 px-2 w-28 text-center">Description</th>
-                <th className="py-2.5 px-2 w-28 text-center">Short Desc.</th>
-                <th className="py-2.5 px-2 min-w-[130px]">Category (دسته)</th>
-                <th className="py-2.5 px-2 min-w-[120px]">Brand (برند)</th>
-                <th className="py-2.5 px-2 min-w-[170px]">Attributes (ویژگی‌ها)</th>
-                <th className="py-2.5 px-2 w-24">Type</th>
-                <th className="py-2.5 px-2 w-24">Status</th>
-                <th className="py-2.5 px-2 w-28">Regular price</th>
-                <th className="py-2.5 px-2 w-28">Sale price</th>
-                <th className="py-2.5 px-2 w-28">SKU</th>
-                <th className="py-2.5 px-2 w-24 text-center">Manage stock</th>
-                <th className="py-2.5 px-2 w-24">Stock quantity</th>
-                <th className="py-2.5 px-2 w-24">Stock status</th>
-                <th className="py-2.5 px-2 w-20 text-center">Actions</th>
+                <th className="sticky top-0 z-20 bg-[#f0f0f1] border-b-2 border-[#c3c4c7] shadow-[0_1px_2px_rgba(0,0,0,0.06)] py-2.5 px-2 w-16 text-center">Thumbnail</th>
+                <th className="sticky top-0 z-20 bg-[#f0f0f1] border-b-2 border-[#c3c4c7] shadow-[0_1px_2px_rgba(0,0,0,0.06)] py-2.5 px-3 min-w-[220px]">Title (نام محصول)</th>
+                <th className="sticky top-0 z-20 bg-[#f0f0f1] border-b-2 border-[#c3c4c7] shadow-[0_1px_2px_rgba(0,0,0,0.06)] py-2.5 px-2 w-28 text-center">Description</th>
+                <th className="sticky top-0 z-20 bg-[#f0f0f1] border-b-2 border-[#c3c4c7] shadow-[0_1px_2px_rgba(0,0,0,0.06)] py-2.5 px-2 w-28 text-center">Short Desc.</th>
+                <th className="sticky top-0 z-20 bg-[#f0f0f1] border-b-2 border-[#c3c4c7] shadow-[0_1px_2px_rgba(0,0,0,0.06)] py-2.5 px-2 min-w-[130px]">Category (دسته)</th>
+                <th className="sticky top-0 z-20 bg-[#f0f0f1] border-b-2 border-[#c3c4c7] shadow-[0_1px_2px_rgba(0,0,0,0.06)] py-2.5 px-2 min-w-[140px]">
+                  <div className="flex items-center gap-1.5">
+                    <span>Brand (برند)</span>
+                    <span
+                      className={`text-[10px] px-1.5 py-0.2 rounded font-normal ${
+                        brandSource === 'taxonomy'
+                          ? 'bg-blue-100 text-blue-800'
+                          : 'bg-emerald-100 text-emerald-800'
+                      }`}
+                      title={brandSource === 'taxonomy' ? `منبع: تاکسونومی ${brandTaxonomyKey}` : `منبع: ویژگی ${brandAttrKey}`}
+                    >
+                      {brandSource === 'taxonomy' ? 'وکامرس' : 'ویژگی'}
+                    </span>
+                  </div>
+                </th>
+                <th className="sticky top-0 z-20 bg-[#f0f0f1] border-b-2 border-[#c3c4c7] shadow-[0_1px_2px_rgba(0,0,0,0.06)] py-2.5 px-2 min-w-[170px]">Attributes (ویژگی‌ها)</th>
+                <th className="sticky top-0 z-20 bg-[#f0f0f1] border-b-2 border-[#c3c4c7] shadow-[0_1px_2px_rgba(0,0,0,0.06)] py-2.5 px-2 w-24 text-center">
+                  <div className="flex flex-col items-center">
+                    <span>اسنپ‌پی</span>
+                    <span className="text-[9px] text-[#646970] font-mono font-normal">
+                      {settings?.snappayMetaKey === '_disable_snappay' ? '_disable_snappay' : 'اقساط'}
+                    </span>
+                  </div>
+                </th>
+                <th className="sticky top-0 z-20 bg-[#f0f0f1] border-b-2 border-[#c3c4c7] shadow-[0_1px_2px_rgba(0,0,0,0.06)] py-2.5 px-2 w-24 text-center">
+                  <div className="flex flex-col items-center">
+                    <span>ترب‌پی</span>
+                    <span className="text-[9px] text-[#646970] font-mono font-normal">
+                      {settings?.torobMetaKey === '_disable_torobpay' ? '_disable_torobpay' : 'سریع'}
+                    </span>
+                  </div>
+                </th>
+                <th className="sticky top-0 z-20 bg-[#f0f0f1] border-b-2 border-[#c3c4c7] shadow-[0_1px_2px_rgba(0,0,0,0.06)] py-2.5 px-2 w-24">Type</th>
+                <th className="sticky top-0 z-20 bg-[#f0f0f1] border-b-2 border-[#c3c4c7] shadow-[0_1px_2px_rgba(0,0,0,0.06)] py-2.5 px-2 w-24">Status</th>
+                <th className="sticky top-0 z-20 bg-[#f0f0f1] border-b-2 border-[#c3c4c7] shadow-[0_1px_2px_rgba(0,0,0,0.06)] py-2.5 px-2 w-28">Regular price</th>
+                <th className="sticky top-0 z-20 bg-[#f0f0f1] border-b-2 border-[#c3c4c7] shadow-[0_1px_2px_rgba(0,0,0,0.06)] py-2.5 px-2 w-28">Sale price</th>
+                <th className="sticky top-0 z-20 bg-[#f0f0f1] border-b-2 border-[#c3c4c7] shadow-[0_1px_2px_rgba(0,0,0,0.06)] py-2.5 px-2 w-28">SKU</th>
+                <th className="sticky top-0 z-20 bg-[#f0f0f1] border-b-2 border-[#c3c4c7] shadow-[0_1px_2px_rgba(0,0,0,0.06)] py-2.5 px-2 w-24 text-center">Manage stock</th>
+                <th className="sticky top-0 z-20 bg-[#f0f0f1] border-b-2 border-[#c3c4c7] shadow-[0_1px_2px_rgba(0,0,0,0.06)] py-2.5 px-2 w-24">Stock quantity</th>
+                <th className="sticky top-0 z-20 bg-[#f0f0f1] border-b-2 border-[#c3c4c7] shadow-[0_1px_2px_rgba(0,0,0,0.06)] py-2.5 px-2 w-24">Stock status</th>
+                <th className="sticky top-0 z-20 bg-[#f0f0f1] border-b-2 border-[#c3c4c7] shadow-[0_1px_2px_rgba(0,0,0,0.06)] py-2.5 px-2 w-20 text-center">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#f0f0f1]">
+            <tbody>
               {paginatedProducts.length === 0 ? (
                 <tr>
-                  <td colSpan={18} className="py-12 text-center text-[#646970]">
+                  <td colSpan={20} className="py-12 text-center text-[#646970]">
                     <div className="max-w-sm mx-auto space-y-2">
                       <Filter className="w-8 h-8 text-gray-400 mx-auto opacity-40" />
                       <div className="font-semibold text-sm text-[#1d2327]">محصولی با فیلترهای انتخابی یافت نشد</div>
@@ -1100,7 +1174,7 @@ export const ProductTableView: React.FC<Props> = ({
                       }`}
                     >
                       {/* Checkbox */}
-                      <td className="py-2 px-3 text-center">
+                      <td className="py-2 px-3 text-center border-b border-[#f0f0f1]">
                         <input
                           type="checkbox"
                           checked={isSelected}
@@ -1110,12 +1184,12 @@ export const ProductTableView: React.FC<Props> = ({
                       </td>
 
                       {/* ID */}
-                      <td className="py-2 px-2 font-mono text-[#2271b1] font-semibold">
+                      <td className="py-2 px-2 font-mono text-[#2271b1] font-semibold border-b border-[#f0f0f1]">
                         {p.id}
                       </td>
 
                       {/* Thumbnail */}
-                      <td className="py-2 px-2 text-center">
+                      <td className="py-2 px-2 text-center border-b border-[#f0f0f1]">
                         <div className="w-10 h-10 rounded border border-[#dcdcde] bg-gray-100 overflow-hidden mx-auto flex items-center justify-center">
                           {p.thumbnail ? (
                             <img
@@ -1130,7 +1204,7 @@ export const ProductTableView: React.FC<Props> = ({
                       </td>
 
                       {/* Title (Editable Text Input) */}
-                      <td className="py-2 px-3">
+                      <td className="py-2 px-3 border-b border-[#f0f0f1]">
                         <input
                           type="text"
                           value={p.name}
@@ -1144,7 +1218,7 @@ export const ProductTableView: React.FC<Props> = ({
                       </td>
 
                       {/* Description Button */}
-                      <td className="py-2 px-2 text-center">
+                      <td className="py-2 px-2 text-center border-b border-[#f0f0f1]">
                         <button
                           type="button"
                           onClick={() =>
@@ -1167,7 +1241,7 @@ export const ProductTableView: React.FC<Props> = ({
                       </td>
 
                       {/* Short Desc. Button */}
-                      <td className="py-2 px-2 text-center">
+                      <td className="py-2 px-2 text-center border-b border-[#f0f0f1]">
                         <button
                           type="button"
                           onClick={() =>
@@ -1190,7 +1264,7 @@ export const ProductTableView: React.FC<Props> = ({
                       </td>
 
                       {/* Category */}
-                      <td className="py-2 px-2">
+                      <td className="py-2 px-2 border-b border-[#f0f0f1]">
                         <input
                           type="text"
                           value={p.category}
@@ -1200,17 +1274,17 @@ export const ProductTableView: React.FC<Props> = ({
                       </td>
 
                       {/* Brand */}
-                      <td className="py-2 px-2">
+                      <td className="py-2 px-2 border-b border-[#f0f0f1]">
                         <input
                           type="text"
-                          value={p.brand}
-                          onChange={e => handleCellChange(p.id, 'brand', e.target.value)}
+                          value={getProductBrand(p)}
+                          onChange={e => handleBrandChange(p.id, e.target.value)}
                           className="w-full text-xs px-2 py-1 rounded-sm border border-transparent hover:border-[#c3c4c7] focus:border-[#2271b1] focus:bg-white bg-transparent focus:outline-none"
                         />
                       </td>
 
                       {/* Attributes */}
-                      <td className="py-2 px-2 max-w-[200px]">
+                      <td className="py-2 px-2 max-w-[200px] border-b border-[#f0f0f1]">
                         <div className="flex flex-wrap items-center gap-1 overflow-hidden">
                           {p.priceRange && (
                             <span className="text-[10px] bg-purple-50 text-purple-800 border border-purple-200 px-1.5 py-0.5 rounded font-medium truncate max-w-[95px]" title={`محدوده قیمت: ${p.priceRange}`}>
@@ -1218,7 +1292,7 @@ export const ProductTableView: React.FC<Props> = ({
                             </span>
                           )}
                           {p.attributes && Object.entries(p.attributes).map(([k, v]) => {
-                            if (k === 'pa_brands' || k === 'pa_price-range') return null;
+                            if (k === 'pa_brands' || k === 'pa_price-range' || k === brandAttrKey) return null;
                             return (
                               <span key={k} className="text-[10px] bg-emerald-50 text-emerald-800 border border-emerald-200 px-1.5 py-0.5 rounded font-medium truncate max-w-[90px]" title={`${k}: ${v}`}>
                                 {k}: {v}
@@ -1239,8 +1313,48 @@ export const ProductTableView: React.FC<Props> = ({
                         </div>
                       </td>
 
+                      {/* SnappPay Toggle */}
+                      <td className="py-2 px-2 text-center border-b border-[#f0f0f1]">
+                        <button
+                          type="button"
+                          onClick={() => handleCellChange(p.id, 'snappayEnabled', !p.snappayEnabled)}
+                          className={`px-2 py-0.5 rounded text-[11px] font-bold transition cursor-pointer border ${
+                            p.snappayEnabled
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100'
+                              : 'bg-gray-50 text-gray-500 border-gray-300 hover:bg-gray-100'
+                          }`}
+                          title={
+                            p.snappayEnabled
+                              ? `اسنپ‌پی برای این کالا فعال است (${settings?.snappayMetaKey ?? '_disable_snappay'}: no)`
+                              : `اسنپ‌پی برای این کالا غیرفعال است (${settings?.snappayMetaKey ?? '_disable_snappay'}: yes)`
+                          }
+                        >
+                          {p.snappayEnabled ? 'فعال' : 'غیرفعال'}
+                        </button>
+                      </td>
+
+                      {/* TorobPay Toggle */}
+                      <td className="py-2 px-2 text-center border-b border-[#f0f0f1]">
+                        <button
+                          type="button"
+                          onClick={() => handleCellChange(p.id, 'torobPayEnabled', !p.torobPayEnabled)}
+                          className={`px-2 py-0.5 rounded text-[11px] font-bold transition cursor-pointer border ${
+                            p.torobPayEnabled
+                              ? 'bg-blue-50 text-blue-700 border-blue-300 hover:bg-blue-100'
+                              : 'bg-gray-50 text-gray-500 border-gray-300 hover:bg-gray-100'
+                          }`}
+                          title={
+                            p.torobPayEnabled
+                              ? `ترب‌پی برای این کالا فعال است (${settings?.torobMetaKey ?? '_disable_torobpay'}: no)`
+                              : `ترب‌پی برای این کالا غیرفعال است (${settings?.torobMetaKey ?? '_disable_torobpay'}: yes)`
+                          }
+                        >
+                          {p.torobPayEnabled ? 'فعال' : 'غیرفعال'}
+                        </button>
+                      </td>
+
                       {/* Type */}
-                      <td className="py-2 px-2">
+                      <td className="py-2 px-2 border-b border-[#f0f0f1]">
                         <select
                           value={p.type}
                           onChange={e => handleCellChange(p.id, 'type', e.target.value as ProductType)}
@@ -1252,7 +1366,7 @@ export const ProductTableView: React.FC<Props> = ({
                       </td>
 
                       {/* Status */}
-                      <td className="py-2 px-2">
+                      <td className="py-2 px-2 border-b border-[#f0f0f1]">
                         <select
                           value={p.status}
                           onChange={e => handleCellChange(p.id, 'status', e.target.value as PostStatus)}
@@ -1265,7 +1379,7 @@ export const ProductTableView: React.FC<Props> = ({
                       </td>
 
                       {/* Regular Price */}
-                      <td className="py-2 px-2">
+                      <td className="py-2 px-2 border-b border-[#f0f0f1]">
                         <input
                           type="number"
                           value={p.regularPrice}
@@ -1276,7 +1390,7 @@ export const ProductTableView: React.FC<Props> = ({
                       </td>
 
                       {/* Sale Price */}
-                      <td className="py-2 px-2">
+                      <td className="py-2 px-2 border-b border-[#f0f0f1]">
                         <input
                           type="number"
                           placeholder="—"
@@ -1288,7 +1402,7 @@ export const ProductTableView: React.FC<Props> = ({
                       </td>
 
                       {/* SKU */}
-                      <td className="py-2 px-2">
+                      <td className="py-2 px-2 border-b border-[#f0f0f1]">
                         <input
                           type="text"
                           value={p.sku}
@@ -1299,7 +1413,7 @@ export const ProductTableView: React.FC<Props> = ({
                       </td>
 
                       {/* Manage Stock */}
-                      <td className="py-2 px-2 text-center">
+                      <td className="py-2 px-2 text-center border-b border-[#f0f0f1]">
                         <div
                           onClick={() => handleCellChange(p.id, 'manageStock', !p.manageStock)}
                           className="inline-flex items-center gap-1.5 cursor-pointer select-none"
@@ -1322,7 +1436,7 @@ export const ProductTableView: React.FC<Props> = ({
                       </td>
 
                       {/* Stock Quantity */}
-                      <td className="py-2 px-2">
+                      <td className="py-2 px-2 border-b border-[#f0f0f1]">
                         <input
                           type="number"
                           disabled={!p.manageStock}
@@ -1335,7 +1449,7 @@ export const ProductTableView: React.FC<Props> = ({
                       </td>
 
                       {/* Stock Status */}
-                      <td className="py-2 px-2">
+                      <td className="py-2 px-2 border-b border-[#f0f0f1]">
                         <select
                           value={p.stockStatus}
                           onChange={e => handleCellChange(p.id, 'stockStatus', e.target.value as StockStatus)}
@@ -1350,7 +1464,7 @@ export const ProductTableView: React.FC<Props> = ({
                       </td>
 
                       {/* Actions */}
-                      <td className="py-2 px-2 text-center">
+                      <td className="py-2 px-2 text-center border-b border-[#f0f0f1]">
                         <div className="flex items-center justify-center gap-1.5">
                           {/* View Preview Button */}
                           <button

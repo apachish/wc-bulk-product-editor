@@ -209,28 +209,35 @@ export const adminCssContent = `@import url('https://fonts.googleapis.com/css2?f
   border-radius: 3px;
   overflow-x: auto;
   overflow-y: auto;
-  max-height: calc(100vh - 280px);
+  max-height: calc(100vh - 260px);
   min-height: 400px;
   box-shadow: 0 1px 2px rgba(0,0,0,.03);
   position: relative;
 }
 .wc-bpe-table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
   font-size: 12px;
   white-space: nowrap;
   text-align: right;
 }
+.wc-bpe-table thead {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 20 !important;
+}
 .wc-bpe-table thead th {
-  background: #f0f0f1;
+  background: #f0f0f1 !important;
   color: #2c3338;
   font-weight: 600;
   padding: 10px 12px;
-  border-bottom: 1px solid #c3c4c7;
+  border-bottom: 2px solid #c3c4c7 !important;
   border-left: 1px solid #e5e5e5;
-  position: sticky;
-  top: 0;
-  z-index: 5;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 20 !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
 }
 .wc-bpe-table thead th:last-child {
   border-left: none;

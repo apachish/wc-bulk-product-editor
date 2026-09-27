@@ -112,7 +112,7 @@ export default function App() {
   const handleDownloadZip = async () => {
     try {
       setIsDownloadingZip(true);
-      const zipBlob = await generatePluginZip();
+      const zipBlob = await generatePluginZip(settings);
       downloadBlob(zipBlob, 'wc-bulk-product-editor-pro.zip');
     } catch (err) {
       console.error('Failed to generate ZIP', err);
@@ -317,6 +317,7 @@ export default function App() {
         {activeTab === 'table' && (
           <ProductTableView
             products={products}
+            settings={settings}
             onSaveProducts={handleSaveTableProducts}
             onGoToWizard={(selectedIds) => {
               setSelectedProductIds(selectedIds);
@@ -345,6 +346,7 @@ export default function App() {
         {/* TAB 4: SOURCE CODE & DOCUMENTATION */}
         {activeTab === 'source' && (
           <SourceCodeViewer
+            settings={settings}
             onDownloadZip={handleDownloadZip}
             isDownloading={isDownloadingZip}
           />

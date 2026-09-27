@@ -348,9 +348,14 @@ export const defaultSettings: PluginSettings = {
   historyRetentionDays: 60,
   auditLogEnabled: true,
   rollbackEnabled: true,
-  snappayMetaKey: '_snappay_eligible_product',
+  brandSource: 'taxonomy', // 'taxonomy' (بخش برند ووکامرس) یا 'attribute' (ویژگی‌های محصول)
+  brandAttributeName: 'pa_brands',
+  brandTaxonomyName: 'product_brand',
+  snappayMetaKey: '_disable_snappay',
+  snappayMode: 'disable_flag', // منطبق با کد قالب کاربر: 'yes' = غیرفعال / 'no' = فعال
   snappayPluginActive: true,
-  torobMetaKey: '_torob_pay_available',
+  torobMetaKey: '_disable_torobpay',
+  torobMode: 'disable_flag', // منطبق با کد قالب کاربر: 'yes' = غیرفعال / 'no' = فعال
   torobPluginActive: true,
   priceRoundUnit: 1000
 };

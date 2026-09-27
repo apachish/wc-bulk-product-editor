@@ -1,17 +1,20 @@
-import React, { useState } from 'react';
-import { pluginFiles, PluginFileEntry } from '../../pluginFiles/phpFiles';
-import { Code2, FileCode, FileText, Download, Copy, Check, Folder, ShieldCheck } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { getPluginFiles, PluginFileEntry } from '../../pluginFiles/phpFiles';
+import { PluginSettings } from '../../types';
+import { Code2, FileCode, FileText, Download, Copy, Check, Folder, ShieldCheck, CheckCircle2 } from 'lucide-react';
 
 interface Props {
+  settings?: PluginSettings;
   onDownloadZip: () => void;
   isDownloading: boolean;
 }
 
-export const SourceCodeViewer: React.FC<Props> = ({ onDownloadZip, isDownloading }) => {
-  const [selectedFilePath, setSelectedFilePath] = useState<string>(pluginFiles[0].path);
+export const SourceCodeViewer: React.FC<Props> = ({ settings, onDownloadZip, isDownloading }) => {
+  const files = useMemo(() => getPluginFiles(settings), [settings]);
+  const [selectedFilePath, setSelectedFilePath] = useState<string>(files[0].path);
   const [copied, setCopied] = useState(false);
 
-  const selectedFile = pluginFiles.find(f => f.path === selectedFilePath) || pluginFiles[0];
+  const selectedFile = files.find(f => f.path === selectedFilePath) || files[0];
 
   const handleCopy = () => {
     navigator.clipboard.writeText(selectedFile.content);
@@ -31,6 +34,23 @@ export const SourceCodeViewer: React.FC<Props> = ({ onDownloadZip, isDownloading
           <p className="text-xs text-[#646970] mt-1">
             کدها مطابق با استاندارد رسمی وردپرس، کاملاً OOP، شی‌گرا، دارای Namespace، امن‌سازی شده با Nonce و قابلیت دسترسی manage_woocommerce نوشته شده‌اند.
           </p>
+          {settings && (
+            <div className="mt-2.5 flex flex-wrap items-center gap-2 text-xs">
+              <span className="font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 inline-flex items-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                تنظیمات اعمال‌شده در پکیج:
+              </span>
+              <span className="bg-blue-50 text-blue-800 px-2 py-0.5 rounded border border-blue-200">
+                منبع برند: {settings.brandSource === 'taxonomy' ? `تاکسونومی رسمی (${settings.brandTaxonomyName || 'product_brand'})` : `ویژگی محصول (${settings.brandAttributeName || 'pa_brands'})`}
+              </span>
+              <span className="bg-purple-50 text-purple-800 px-2 py-0.5 rounded border border-purple-200 font-mono text-[11px]">
+                اسنپ‌پی: {settings.snappayMetaKey}
+              </span>
+              <span className="bg-amber-50 text-amber-800 px-2 py-0.5 rounded border border-amber-200 font-mono text-[11px]">
+                ترب‌پی: {settings.torobMetaKey}
+              </span>
+            </div>
+          )}
         </div>
 
         <button
@@ -53,7 +73,7 @@ export const SourceCodeViewer: React.FC<Props> = ({ onDownloadZip, isDownloading
           </div>
 
           <div className="space-y-1">
-            {pluginFiles.map(file => {
+            {files.map(file => {
               const isSelected = selectedFilePath === file.path;
               const isPhp = file.language === 'php';
 

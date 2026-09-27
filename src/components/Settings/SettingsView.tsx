@@ -114,6 +114,130 @@ export const SettingsView: React.FC<Props> = ({ settings, setSettings }) => {
           </div>
         </div>
 
+        {/* 1. Brand Source Settings (منبع خواندن و ذخیره برند) */}
+        <div className="bg-white p-5 border border-[#c3c4c7] rounded-sm shadow-sm space-y-4">
+          <div className="flex items-center gap-2 border-b border-[#f0f0f1] pb-3 text-sm font-bold text-[#1d2327]">
+            <Database className="w-4 h-4 text-[#2271b1]" />
+            <span>منبع برند محصول (Product Brand Source)</span>
+          </div>
+
+          <p className="text-xs text-[#646970] leading-relaxed">
+            مشخص کنید مقدار برند محصولات در جدول ویرایش سریع و عملیات گروهی از کدام بخش ووکامرس خوانده و ذخیره شود:
+          </p>
+
+          <div className="space-y-3">
+            {/* Option A: Native WooCommerce Brands */}
+            <label
+              className={`block p-3.5 rounded border transition cursor-pointer ${
+                localSettings.brandSource === 'taxonomy'
+                  ? 'border-[#2271b1] bg-blue-50/40 ring-1 ring-[#2271b1]'
+                  : 'border-[#c3c4c7] bg-[#f9f9f9] hover:bg-gray-100'
+              }`}
+            >
+              <div className="flex items-start gap-2.5">
+                <input
+                  type="radio"
+                  name="brandSource"
+                  checked={localSettings.brandSource === 'taxonomy'}
+                  onChange={() => setLocalSettings(prev => ({ ...prev, brandSource: 'taxonomy' }))}
+                  className="w-4 h-4 mt-0.5 text-[#2271b1] focus:ring-0"
+                />
+                <div className="space-y-1">
+                  <div className="text-xs font-bold text-[#1d2327]">
+                    بخش برند اختصاصی ووکامرس (WooCommerce Brands / تاکسونومی رسمی)
+                  </div>
+                  <p className="text-[11px] text-[#50575e]">
+                    برند کالاها مستقیماً از بخش برندهای خود ووکامرس (تاکسونومی <code className="font-mono bg-white px-1 py-0.5 border rounded">product_brand</code>) خوانده می‌شود. مناسب افزونه رسمی WooCommerce Brands یا قالب‌هایی با فیلد اختصاصی برند.
+                  </p>
+                </div>
+              </div>
+
+              {localSettings.brandSource === 'taxonomy' && (
+                <div className="mt-3 pt-3 border-t border-blue-200/60 pr-6">
+                  <label className="block text-[11px] font-medium text-[#2c3338] mb-1">
+                    نام تاکسونومی برند در ووکامرس (Taxonomy Slug):
+                  </label>
+                  <input
+                    type="text"
+                    value={localSettings.brandTaxonomyName}
+                    onChange={e => setLocalSettings(prev => ({ ...prev, brandTaxonomyName: e.target.value }))}
+                    className="w-full max-w-xs text-xs font-mono bg-white border border-[#8c8f94] rounded-sm px-2.5 py-1.5 focus:border-[#2271b1] focus:outline-none"
+                    placeholder="product_brand"
+                  />
+                  <div className="flex items-center gap-1.5 mt-1.5 text-[10px] text-[#646970]">
+                    <span>پیش‌فرض‌های رایج:</span>
+                    {['product_brand', 'yith_product_brand', 'brand'].map(slug => (
+                      <button
+                        key={slug}
+                        type="button"
+                        onClick={() => setLocalSettings(prev => ({ ...prev, brandTaxonomyName: slug }))}
+                        className="px-1.5 py-0.5 bg-white border border-gray-300 rounded hover:border-[#2271b1] font-mono cursor-pointer"
+                      >
+                        {slug}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </label>
+
+            {/* Option B: Product Attributes */}
+            <label
+              className={`block p-3.5 rounded border transition cursor-pointer ${
+                localSettings.brandSource === 'attribute'
+                  ? 'border-[#2271b1] bg-blue-50/40 ring-1 ring-[#2271b1]'
+                  : 'border-[#c3c4c7] bg-[#f9f9f9] hover:bg-gray-100'
+              }`}
+            >
+              <div className="flex items-start gap-2.5">
+                <input
+                  type="radio"
+                  name="brandSource"
+                  checked={localSettings.brandSource === 'attribute'}
+                  onChange={() => setLocalSettings(prev => ({ ...prev, brandSource: 'attribute' }))}
+                  className="w-4 h-4 mt-0.5 text-[#2271b1] focus:ring-0"
+                />
+                <div className="space-y-1">
+                  <div className="text-xs font-bold text-[#1d2327]">
+                    ویژگی‌های محصول (Product Attributes / مثلاً pa_brands)
+                  </div>
+                  <p className="text-[11px] text-[#50575e]">
+                    برند کالاها از ویژگی‌های محصول (مانند ویژگی <code className="font-mono bg-white px-1 py-0.5 border rounded">pa_brands</code> یا هر ویژگی سفارشی دیگر) استخراج و ذخیره خواهد شد.
+                  </p>
+                </div>
+              </div>
+
+              {localSettings.brandSource === 'attribute' && (
+                <div className="mt-3 pt-3 border-t border-blue-200/60 pr-6">
+                  <label className="block text-[11px] font-medium text-[#2c3338] mb-1">
+                    نام اسلاگ ویژگی برند (Attribute Slug):
+                  </label>
+                  <input
+                    type="text"
+                    value={localSettings.brandAttributeName}
+                    onChange={e => setLocalSettings(prev => ({ ...prev, brandAttributeName: e.target.value }))}
+                    className="w-full max-w-xs text-xs font-mono bg-white border border-[#8c8f94] rounded-sm px-2.5 py-1.5 focus:border-[#2271b1] focus:outline-none"
+                    placeholder="pa_brands"
+                  />
+                  <div className="flex items-center gap-1.5 mt-1.5 text-[10px] text-[#646970]">
+                    <span>پیش‌فرض‌های رایج:</span>
+                    {['pa_brands', 'pa_brand', 'brand', 'برند'].map(slug => (
+                      <button
+                        key={slug}
+                        type="button"
+                        onClick={() => setLocalSettings(prev => ({ ...prev, brandAttributeName: slug }))}
+                        className="px-1.5 py-0.5 bg-white border border-gray-300 rounded hover:border-[#2271b1] font-mono cursor-pointer"
+                      >
+                        {slug}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </label>
+          </div>
+        </div>
+
         {/* 2. Gateways Adapters (Snappay & Torob) */}
         <div className="bg-white p-5 border border-[#c3c4c7] rounded-sm shadow-sm space-y-4">
           <div className="flex items-center gap-2 border-b border-[#f0f0f1] pb-3 text-sm font-bold text-[#1d2327]">
@@ -121,20 +245,63 @@ export const SettingsView: React.FC<Props> = ({ settings, setSettings }) => {
             <span>تنظیمات لایه آداپتور درگاه‌ها (Gateway Adapters)</span>
           </div>
 
+          {/* Quick preset matching user's custom WooCommerce snippet */}
+          <div className="bg-emerald-50 border border-emerald-300 p-3 rounded text-xs space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-emerald-900 flex items-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <span>پیکربندی منطبق با کد functions.php سایت شما</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setLocalSettings(prev => ({
+                    ...prev,
+                    snappayMetaKey: '_disable_snappay',
+                    snappayMode: 'disable_flag',
+                    torobMetaKey: '_disable_torobpay',
+                    torobMode: 'disable_flag'
+                  }));
+                }}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] px-2.5 py-1 rounded font-medium cursor-pointer transition"
+              >
+                اعمال تنظیمات کد شما
+              </button>
+            </div>
+            <p className="text-[11px] text-emerald-800 leading-relaxed">
+              کد قالب شما از متادیتاهای <code className="font-mono bg-white px-1 py-0.5 border rounded">_disable_snappay</code> و <code className="font-mono bg-white px-1 py-0.5 border rounded">_disable_torobpay</code> با منطق چک‌باکس غیرفعال‌سازی استفاده می‌کند. هنگام فعال کردن اقساط در جدول، مقدار متای کالا <code className="font-mono bg-white px-1 py-0.5 border rounded">no</code> و هنگام غیرفعال کردن مقدار <code className="font-mono bg-white px-1 py-0.5 border rounded">yes</code> ذخیره خواهد شد تا درگاه در Checkout بر اساس فیلتر شما مدیریت گردد.
+            </p>
+          </div>
+
           <div className="space-y-3">
             <div className="bg-[#f9f9f9] p-3 rounded border border-[#e5e5e5] space-y-2">
               <div className="flex items-center justify-between text-xs font-bold text-[#1d2327]">
                 <span>آداپتور اسنپ‌پی (Snappay Adapter)</span>
-                <span className="text-[11px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded">اتصال پویا</span>
+                <span className="text-[11px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-mono">
+                  {localSettings.snappayMetaKey}
+                </span>
               </div>
-              <div>
-                <label className="block text-[11px] text-[#50575e] mb-1">نام کلید متای کالا (Meta Key):</label>
-                <input
-                  type="text"
-                  value={localSettings.snappayMetaKey}
-                  onChange={e => setLocalSettings(prev => ({ ...prev, snappayMetaKey: e.target.value }))}
-                  className="w-full text-xs font-mono bg-white border border-[#8c8f94] rounded-sm px-2.5 py-1.5 focus:border-[#2271b1] focus:outline-none"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[11px] text-[#50575e] mb-1">نام کلید متای کالا (Meta Key):</label>
+                  <input
+                    type="text"
+                    value={localSettings.snappayMetaKey}
+                    onChange={e => setLocalSettings(prev => ({ ...prev, snappayMetaKey: e.target.value }))}
+                    className="w-full text-xs font-mono bg-white border border-[#8c8f94] rounded-sm px-2.5 py-1.5 focus:border-[#2271b1] focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] text-[#50575e] mb-1">منطق فیلد در دیتابیس:</label>
+                  <select
+                    value={localSettings.snappayMode}
+                    onChange={e => setLocalSettings(prev => ({ ...prev, snappayMode: e.target.value as any }))}
+                    className="w-full text-xs bg-white border border-[#8c8f94] rounded-sm px-2.5 py-1.5 focus:border-[#2271b1] focus:outline-none cursor-pointer"
+                  >
+                    <option value="disable_flag">چک‌باکس غیرفعال‌سازی (yes = غیرفعال، no = فعال)</option>
+                    <option value="enable_flag">چک‌باکس فعال‌سازی (yes = فعال، no = غیرفعال)</option>
+                  </select>
+                </div>
               </div>
               <p className="text-[10px] text-[#646970]">
                 همچنین قابل فیلتر از طریق هوک وردپرس: <code className="font-mono">wc_bpe_snappay_meta_key</code>
@@ -144,16 +311,31 @@ export const SettingsView: React.FC<Props> = ({ settings, setSettings }) => {
             <div className="bg-[#f9f9f9] p-3 rounded border border-[#e5e5e5] space-y-2">
               <div className="flex items-center justify-between text-xs font-bold text-[#1d2327]">
                 <span>آداپتور پرداخت سریع ترب (Torob Pay Adapter)</span>
-                <span className="text-[11px] bg-blue-100 text-blue-800 px-2 py-0.5 rounded">اتصال پویا</span>
+                <span className="text-[11px] bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-mono">
+                  {localSettings.torobMetaKey}
+                </span>
               </div>
-              <div>
-                <label className="block text-[11px] text-[#50575e] mb-1">نام کلید متای کالا (Meta Key):</label>
-                <input
-                  type="text"
-                  value={localSettings.torobMetaKey}
-                  onChange={e => setLocalSettings(prev => ({ ...prev, torobMetaKey: e.target.value }))}
-                  className="w-full text-xs font-mono bg-white border border-[#8c8f94] rounded-sm px-2.5 py-1.5 focus:border-[#2271b1] focus:outline-none"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[11px] text-[#50575e] mb-1">نام کلید متای کالا (Meta Key):</label>
+                  <input
+                    type="text"
+                    value={localSettings.torobMetaKey}
+                    onChange={e => setLocalSettings(prev => ({ ...prev, torobMetaKey: e.target.value }))}
+                    className="w-full text-xs font-mono bg-white border border-[#8c8f94] rounded-sm px-2.5 py-1.5 focus:border-[#2271b1] focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] text-[#50575e] mb-1">منطق فیلد در دیتابیس:</label>
+                  <select
+                    value={localSettings.torobMode}
+                    onChange={e => setLocalSettings(prev => ({ ...prev, torobMode: e.target.value as any }))}
+                    className="w-full text-xs bg-white border border-[#8c8f94] rounded-sm px-2.5 py-1.5 focus:border-[#2271b1] focus:outline-none cursor-pointer"
+                  >
+                    <option value="disable_flag">چک‌باکس غیرفعال‌سازی (yes = غیرفعال، no = فعال)</option>
+                    <option value="enable_flag">چک‌باکس فعال‌سازی (yes = فعال، no = غیرفعال)</option>
+                  </select>
+                </div>
               </div>
               <p className="text-[10px] text-[#646970]">
                 همچنین قابل فیلتر از طریق هوک وردپرس: <code className="font-mono">wc_bpe_torob_meta_key</code>

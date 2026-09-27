@@ -44,23 +44,23 @@ export const HistoryView: React.FC<Props> = ({ historyLogs, onRollback }) => {
 
       {/* History Table */}
       <div className="bg-white border border-[#c3c4c7] rounded-sm shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-right text-xs">
-            <thead className="bg-[#f0f0f1] text-[#2c3338] border-b border-[#c3c4c7] font-semibold">
-              <tr>
-                <th className="py-2.5 px-3 w-32 font-mono">شناسه UUID</th>
-                <th className="py-2.5 px-3 w-40">زمان و تاریخ</th>
-                <th className="py-2.5 px-3 w-32">کاربر مدیر</th>
-                <th className="py-2.5 px-3">شرح تغییرات و فیلترها</th>
-                <th className="py-2.5 px-3 w-28 text-center">موفق / خطا</th>
-                <th className="py-2.5 px-3 w-28 text-center">وضعیت</th>
-                <th className="py-2.5 px-3 w-36 text-center">عملیات</th>
+        <div className="overflow-x-auto overflow-y-auto max-h-[550px] relative">
+          <table className="w-full text-right text-xs border-separate border-spacing-0">
+            <thead className="select-none sticky top-0 z-20">
+              <tr className="bg-[#f0f0f1] text-[#2c3338] font-semibold">
+                <th className="sticky top-0 z-20 bg-[#f0f0f1] border-b-2 border-[#c3c4c7] shadow-[0_1px_2px_rgba(0,0,0,0.06)] py-2.5 px-3 w-32 font-mono">شناسه UUID</th>
+                <th className="sticky top-0 z-20 bg-[#f0f0f1] border-b-2 border-[#c3c4c7] shadow-[0_1px_2px_rgba(0,0,0,0.06)] py-2.5 px-3 w-40">زمان و تاریخ</th>
+                <th className="sticky top-0 z-20 bg-[#f0f0f1] border-b-2 border-[#c3c4c7] shadow-[0_1px_2px_rgba(0,0,0,0.06)] py-2.5 px-3 w-32">کاربر مدیر</th>
+                <th className="sticky top-0 z-20 bg-[#f0f0f1] border-b-2 border-[#c3c4c7] shadow-[0_1px_2px_rgba(0,0,0,0.06)] py-2.5 px-3">شرح تغییرات و فیلترها</th>
+                <th className="sticky top-0 z-20 bg-[#f0f0f1] border-b-2 border-[#c3c4c7] shadow-[0_1px_2px_rgba(0,0,0,0.06)] py-2.5 px-3 w-28 text-center">موفق / خطا</th>
+                <th className="sticky top-0 z-20 bg-[#f0f0f1] border-b-2 border-[#c3c4c7] shadow-[0_1px_2px_rgba(0,0,0,0.06)] py-2.5 px-3 w-28 text-center">وضعیت</th>
+                <th className="sticky top-0 z-20 bg-[#f0f0f1] border-b-2 border-[#c3c4c7] shadow-[0_1px_2px_rgba(0,0,0,0.06)] py-2.5 px-3 w-36 text-center">عملیات</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#f0f0f1]">
+            <tbody>
               {historyLogs.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-8 text-center text-[#646970]">
+                  <td colSpan={7} className="py-8 text-center text-[#646970] border-b border-[#f0f0f1]">
                     هنوز هیچ لاگ ویرایش گروهی ثبت نشده است. پس از اجرای اولین ویرایش گروهی، تاریخچه در اینجا ثبت خواهد شد.
                   </td>
                 </tr>
@@ -72,31 +72,33 @@ export const HistoryView: React.FC<Props> = ({ historyLogs, onRollback }) => {
                   return (
                     <React.Fragment key={log.id}>
                       <tr className={`hover:bg-[#f6f7f7] ${isExpanded ? 'bg-blue-50/40' : ''}`}>
-                        <td className="py-3 px-3 font-mono text-[11px] text-[#646970]">
+                        <td className="py-3 px-3 font-mono text-[11px] text-[#646970] border-b border-[#f0f0f1]">
                           <span title={log.id}>{log.id.substring(0, 8)}...</span>
                         </td>
-                        <td className="py-3 px-3 text-[#2c3338] flex items-center gap-1.5 pt-3.5">
-                          <Clock className="w-3.5 h-3.5 text-[#8c8f94]" />
-                          <span>{log.timestamp}</span>
+                        <td className="py-3 px-3 text-[#2c3338] border-b border-[#f0f0f1]">
+                          <div className="flex items-center gap-1.5">
+                            <Clock className="w-3.5 h-3.5 text-[#8c8f94]" />
+                            <span>{log.timestamp}</span>
+                          </div>
                         </td>
-                        <td className="py-3 px-3 text-[#50575e]">
+                        <td className="py-3 px-3 text-[#50575e] border-b border-[#f0f0f1]">
                           <div className="flex items-center gap-1.5">
                             <User className="w-3.5 h-3.5 text-[#8c8f94]" />
                             <span>{log.userName}</span>
                           </div>
                         </td>
-                        <td className="py-3 px-3">
+                        <td className="py-3 px-3 border-b border-[#f0f0f1]">
                           <div className="font-semibold text-[#1d2327]">{log.description}</div>
                           <div className="text-[11px] text-[#646970] mt-0.5">
                             {log.changesSummary}
                           </div>
                         </td>
-                        <td className="py-3 px-3 text-center">
+                        <td className="py-3 px-3 text-center border-b border-[#f0f0f1]">
                           <span className="font-mono text-emerald-700 font-bold">{log.successCount}</span>
                           <span className="text-[#8c8f94] mx-1">/</span>
                           <span className="font-mono text-red-600">{log.failCount}</span>
                         </td>
-                        <td className="py-3 px-3 text-center">
+                        <td className="py-3 px-3 text-center border-b border-[#f0f0f1]">
                           {isRolledBack ? (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-gray-100 text-gray-700">
                               <RotateCcw className="w-3 h-3" />
@@ -109,7 +111,7 @@ export const HistoryView: React.FC<Props> = ({ historyLogs, onRollback }) => {
                             </span>
                           )}
                         </td>
-                        <td className="py-3 px-3 text-center">
+                        <td className="py-3 px-3 text-center border-b border-[#f0f0f1]">
                           <div className="flex items-center justify-center gap-2">
                             <button
                               type="button"

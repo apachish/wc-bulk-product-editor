@@ -151,16 +151,24 @@ export interface OperationLog {
   }[];
 }
 
+export type BrandSource = 'taxonomy' | 'attribute';
+
 export interface PluginSettings {
   batchSize: number;
   historyRetentionDays: number;
   auditLogEnabled: boolean;
   rollbackEnabled: boolean;
-  // Snappay adapter configuration
+  // Brand source configuration (ویژگی‌های محصول vs بخش برند اختصاصی ووکامرس)
+  brandSource: BrandSource;
+  brandAttributeName: string; // e.g. 'pa_brands'
+  brandTaxonomyName: string; // e.g. 'product_brand'
+  // Snappay adapter configuration (سازگار با کد _disable_snappay)
   snappayMetaKey: string;
+  snappayMode: 'disable_flag' | 'enable_flag'; // 'disable_flag': 'yes' = غیرفعال / 'no' = فعال
   snappayPluginActive: boolean;
-  // Torob Pay adapter configuration
+  // Torob Pay adapter configuration (سازگار با کد _disable_torobpay)
   torobMetaKey: string;
+  torobMode: 'disable_flag' | 'enable_flag'; // 'disable_flag': 'yes' = غیرفعال / 'no' = فعال
   torobPluginActive: boolean;
   priceRoundUnit: number;
 }
