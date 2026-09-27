@@ -1,0 +1,6 @@
+{
+  "name": "WooCommerce Bulk Product Editor Pro | افزونه ویرایش گروهی محصولات",
+  "description": "افزونه مستقل و کامل ووکامرس برای ویرایش گروهی محصولات، ویزارد ۵ مرحله‌ای فارسی، پشتیبانی از اسنپ‌پی و ترب، پیش‌نمایش، Rollback و دانلود بسته ZIP نصبی.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
