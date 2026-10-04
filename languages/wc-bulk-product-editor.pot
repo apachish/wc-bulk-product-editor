@@ -1,0 +1,4 @@
+# Translation template for WooCommerce Bulk Product Editor Pro
+msgid ""
+msgstr ""
+"Language: fa_IR\n"
