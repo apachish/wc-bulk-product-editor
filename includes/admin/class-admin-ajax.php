@@ -630,7 +630,6 @@ class AdminAjax {
         $productIds  = array_map('intval', $_POST['product_ids'] ?? []);
         $operations  = json_decode(stripslashes($_POST['operations'] ?? '{}'), true);
         $operationId = sanitize_text_field($_POST['operation_id'] ?? wp_generate_uuid4());
-
         // Ensure master operation entry exists
         $opsTable = $wpdb->prefix . 'wc_bpe_operations';
         $exists = $wpdb->get_var($wpdb->prepare("SELECT id FROM {$opsTable} WHERE id = %s", $operationId));

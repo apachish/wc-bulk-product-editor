@@ -3051,6 +3051,9 @@
       stock_value: state.opSettings.stockValue,
       stockValue: state.opSettings.stockValue,
 
+      manage_stock_action: state.opSettings.manageStockAction,
+      manageStockAction: state.opSettings.manageStockAction,
+
       stock_status_action: state.opSettings.stockStatusAction,
       stockStatusAction: state.opSettings.stockStatusAction,
 

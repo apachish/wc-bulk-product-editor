@@ -16,7 +16,7 @@ class BatchProcessor {
      * Apply changes to a single product using WooCommerce CRUD API
      */
     public static function applyToProduct(int $productId, array $operations, string $operationId): array {
-        error_log( print_r( "kos aien mizaram", true ) );
+
 
         global $wpdb;
         $product = wc_get_product($productId);
@@ -51,6 +51,11 @@ class BatchProcessor {
                 if (!$isManagingStock) {
                     // هنگام غیرفعال‌سازی مدیریت موجودی، کالا ناموجود شود ولی موجودی حفظ گردد
                     $product->set_stock_status('outofstock');
+                    update_post_meta($productId, '_stop_selling', $product['stock_quantity'] );
+
+                }else{
+                    delete_post_meta($productId, '_stop_selling');
+
                 }
             }
             if (isset($diff['after']['stock_quantity'])) {
@@ -63,7 +68,26 @@ class BatchProcessor {
             }
             // Apply Stock Status Override
             if (isset($diff['after']['stock_status'])) {
-                $product->set_stock_status((string) $diff['after']['stock_status']);
+//                $product->set_stock_status((string) $diff['after']['stock_status']);
+//                if($diff['after']['stock_status'] == 'outofstock')
+//                    update_post_meta($productId, '_stop_selling', $product['stock_quantity'] );
+//                else
+//                    delete_post_meta($productId, '_stop_selling');
+                if (in_array($diff['after']['stock_status'], ['instock', 'outofstock', 'onbackorder'], true)) {
+                    if ($diff['after']['stock_status'] === 'outofstock') {
+                        $product->set_stock_status('outofstock');
+                        $product->set_manage_stock(false);
+
+                        update_post_meta($productId, '_stop_selling', $product->get_stock_quantity());
+
+                    } else {
+                        $product->set_manage_stock(true);
+
+                        $product->set_stock_status('instock');
+                        delete_post_meta($productId, '_stop_selling');
+                    }
+                }
+
             }
 
             // Apply Adapter Values (Snappay, Torob, etc.)
@@ -133,6 +157,7 @@ class BatchProcessor {
      * ذخیره دقیق برند چه به صورت ویژگی ووکامرس (Attributes) و چه به صورت تاکسونومی اختصاصی
      */
     public static function saveProductBrand(WC_Product $product, string $brandName): void {
+
         $productId = $product->get_id();
         $brandName = trim($brandName);
         $brandSource = get_option('wc_bpe_brand_source', 'taxonomy');
