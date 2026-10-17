@@ -30,7 +30,7 @@
     totalStoreProducts: 0,
     isAllStoreSelected: false,
     opSettings: {
-      regularPriceType: 'increase_percent',
+      regularPriceType: 'none',
       regularPriceValue: 10,
       roundPriceTo: 1000,
       salePriceType: 'none',
